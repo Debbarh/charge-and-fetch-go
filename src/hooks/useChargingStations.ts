@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChargingStationData, parseChargingStationsGeoJSON } from '../utils/geoJsonParser';
 import { calculateDistance } from '../utils/geoUtils';
 import { UserLocation } from './useUserLocation';
 
 export const useChargingStations = (userLocation?: UserLocation | null) => {
-  const [stations, setStations] = useState<ChargingStationData[]>([]);
+  const [allStations, setAllStations] = useState<ChargingStationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export const useChargingStations = (userLocation?: UserLocation | null) => {
         const parsedStations = parseChargingStationsGeoJSON(geoJsonContent);
         
         console.log(`${parsedStations.length} bornes chargées depuis le GeoJSON`);
-        setStations(parsedStations);
+        setAllStations(parsedStations);
         setError(null);
       } catch (err) {
         console.error('Erreur lors du chargement des bornes:', err);
@@ -37,26 +37,28 @@ export const useChargingStations = (userLocation?: UserLocation | null) => {
     loadStations();
   }, []);
 
-  // Calculer les distances quand la position de l'utilisateur change
-  useEffect(() => {
-    if (userLocation && stations.length > 0) {
-      const stationsWithDistance = stations.map(station => ({
-        ...station,
-        distance: calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          station.lat,
-          station.lng
-        )
-      }));
-
-      // Trier par distance croissante
-      stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      
-      setStations(stationsWithDistance);
-      console.log('Distances calculées pour', stationsWithDistance.length, 'bornes');
+  // Calculer les distances et trier les stations
+  const stations = useMemo(() => {
+    if (!userLocation || allStations.length === 0) {
+      return allStations;
     }
-  }, [userLocation, stations.length]);
+
+    const stationsWithDistance = allStations.map(station => ({
+      ...station,
+      distance: calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        station.lat,
+        station.lng
+      )
+    }));
+
+    // Trier par distance croissante
+    stationsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    
+    console.log('Distances calculées pour', stationsWithDistance.length, 'bornes');
+    return stationsWithDistance;
+  }, [userLocation, allStations]);
 
   return { stations, isLoading, error };
 };

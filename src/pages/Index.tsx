@@ -75,7 +75,7 @@ const Index = () => {
       filtered = filtered.filter(station => station.gratuit);
     }
 
-    return filtered.slice(0, 10); // Limiter à 10 résultats
+    return filtered.slice(0, 20); // Augmenter la limite à 20 résultats
   }, [stations, powerFilter, connectorFilter, freeOnly, maxDistance, userLocation]);
 
   const tabs = [
@@ -86,21 +86,26 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
-  // Adapter les bornes pour l'affichage
+  // Adapter les bornes pour l'affichage avec les vraies données
   const nearbyStations = filteredStations.map(station => ({
     id: station.id,
     name: station.nom_station,
     operator: station.nom_operateur,
+    brand: station.nom_enseigne,
+    address: station.adresse_station,
     distance: station.distance ? formatDistance(station.distance) : 'Distance inconnue',
-    available: Math.floor(Math.random() * station.nbre_pdc) + 1, // Simulation
+    available: Math.floor(Math.random() * station.nbre_pdc) + 1, // Simulation - à remplacer par données temps réel
     total: station.nbre_pdc,
-    price: station.gratuit ? 'Gratuit' : station.tarification,
+    price: station.gratuit ? 'Gratuit' : (station.tarification || 'Non spécifié'),
     power: station.puissance_nominale,
     connectors: [
       station.prise_type_2 && 'Type 2',
       station.prise_type_combo_ccs && 'CCS',
       station.prise_type_chademo && 'CHAdeMO'
-    ].filter(Boolean).join(', ')
+    ].filter(Boolean).join(', '),
+    schedule: station.horaires,
+    pmr: station.accessibilite_pmr,
+    realData: true // Indicateur que ce sont de vraies données
   }));
 
   const valetServices = [
@@ -266,7 +271,31 @@ const Index = () => {
                 </Card>
               )}
 
-              {nearbyStations.length > 0 ? (
+              {stationsLoading && (
+                <Card className="bg-white/90 backdrop-blur-sm">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-muted-foreground">Chargement des bornes depuis le GeoJSON...</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {stationsError && (
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-red-600">Erreur: {stationsError}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.location.reload()}
+                      className="mt-2"
+                    >
+                      Réessayer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!stationsLoading && !stationsError && nearbyStations.length > 0 ? (
                 <div className="space-y-3">
                   {nearbyStations.map((station) => (
                     <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
@@ -275,12 +304,15 @@ const Index = () => {
                           <div className="flex-1">
                             <h4 className="font-medium text-foreground">{station.name}</h4>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {station.operator}
+                              {station.operator} • {station.brand}
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
+                              {station.address}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
                               {station.distance} • {station.price}
                             </p>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
                               <span className={`text-xs px-2 py-1 rounded-full ${
                                 station.power >= 50 ? 'bg-red-100 text-red-700' :
                                 station.power >= 22 ? 'bg-yellow-100 text-yellow-700' :
@@ -293,6 +325,12 @@ const Index = () => {
                                   {station.connectors}
                                 </span>
                               )}
+                              {station.schedule && station.schedule !== 'Non spécifié' && (
+                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                                  <Clock className="h-3 w-3 inline mr-1" />
+                                  {station.schedule.length > 20 ? `${station.schedule.substring(0, 20)}...` : station.schedule}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">
@@ -303,20 +341,26 @@ const Index = () => {
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground">disponibles</p>
+                            {station.pmr && station.pmr !== 'Non spécifié' && station.pmr.toLowerCase().includes('oui') && (
+                              <div className="mt-1">
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                  PMR
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-              ) : (
+              ) : !stationsLoading && !stationsError && (
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardContent className="p-4 text-center">
                     <p className="text-muted-foreground">
-                      {stationsLoading ? 'Chargement des bornes...' : 
-                       filteredStations.length === 0 && stations.length > 0 ? 
+                      {filteredStations.length === 0 && stations.length > 0 ? 
                        'Aucune borne ne correspond aux filtres sélectionnés' :
-                       'Aucune borne trouvée'}
+                       'Aucune borne trouvée dans le fichier GeoJSON'}
                     </p>
                     {filteredStations.length === 0 && stations.length > 0 && (
                       <Button
