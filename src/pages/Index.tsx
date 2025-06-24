@@ -42,7 +42,7 @@ const Index = () => {
 
   const tabs = [
     { id: 'map', label: 'Carte', icon: MapPin },
-    { id: 'valet', label: 'Client', icon: Car },
+    { id: 'valet', label: 'Demande', icon: Car },
     { id: 'driver', label: 'Chauffeur', icon: Users },
     { id: 'bookings', label: 'Historique', icon: Clock },
     { id: 'profile', label: 'Profil', icon: User },
