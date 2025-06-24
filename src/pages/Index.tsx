@@ -27,56 +27,14 @@ const Index = () => {
   // Géolocalisation de l'utilisateur
   const { userLocation, isLocating, locationError, getCurrentLocation } = useUserLocation();
   
-  // Bornes avec distances calculées
-  const { stations, isLoading: stationsLoading, error: stationsError } = useChargingStations(userLocation);
+  // Bornes avec distances calculées et filtres appliqués
+  const { stations, isLoading: stationsLoading, error: stationsError } = useChargingStations(
+    userLocation, 
+    { powerFilter, connectorFilter, freeOnly, maxDistance }
+  );
 
-  // Filtrer les bornes selon les critères
-  const filteredStations = useMemo(() => {
-    let filtered = stations;
-
-    // Filtre par distance maximale
-    if (userLocation && maxDistance > 0) {
-      filtered = filtered.filter(station => 
-        !station.distance || station.distance <= maxDistance
-      );
-    }
-
-    // Filtre par puissance
-    if (powerFilter.length > 0) {
-      filtered = filtered.filter(station => {
-        const power = station.puissance_nominale;
-        return powerFilter.some(filter => {
-          switch(filter) {
-            case 'slow': return power <= 22;
-            case 'fast': return power > 22 && power < 50;
-            case 'rapid': return power >= 50;
-            default: return true;
-          }
-        });
-      });
-    }
-
-    // Filtre par type de connecteur
-    if (connectorFilter.length > 0) {
-      filtered = filtered.filter(station => {
-        return connectorFilter.some(connector => {
-          switch(connector) {
-            case 'type2': return station.prise_type_2;
-            case 'ccs': return station.prise_type_combo_ccs;
-            case 'chademo': return station.prise_type_chademo;
-            default: return true;
-          }
-        });
-      });
-    }
-
-    // Filtre gratuit uniquement
-    if (freeOnly) {
-      filtered = filtered.filter(station => station.gratuit);
-    }
-
-    return filtered.slice(0, 20); // Augmenter la limite à 20 résultats
-  }, [stations, powerFilter, connectorFilter, freeOnly, maxDistance, userLocation]);
+  // Vérifier si des filtres sont actifs
+  const hasActiveFilters = powerFilter.length > 0 || connectorFilter.length > 0 || freeOnly || maxDistance < 50;
 
   const tabs = [
     { id: 'map', label: 'Carte', icon: MapPin },
@@ -87,7 +45,7 @@ const Index = () => {
   ];
 
   // Adapter les bornes pour l'affichage avec les vraies données
-  const nearbyStations = filteredStations.map(station => ({
+  const nearbyStations = stations.map(station => ({
     id: station.id,
     name: station.nom_station,
     operator: station.nom_operateur,
@@ -161,7 +119,8 @@ const Index = () => {
                 <h3 className="text-lg font-semibold text-foreground">
                   Bornes à proximité
                   <span className="text-sm font-normal text-muted-foreground ml-2">
-                    ({filteredStations.length} résultats)
+                    ({stations.length} résultats)
+                    {!hasActiveFilters && userLocation && ' - 10 plus proches'}
                   </span>
                 </h3>
                 <Button
@@ -172,9 +131,9 @@ const Index = () => {
                 >
                   <Filter className="h-4 w-4" />
                   Filtres
-                  {(powerFilter.length > 0 || connectorFilter.length > 0 || freeOnly) && (
+                  {hasActiveFilters && (
                     <span className="bg-electric-500 text-white text-xs px-2 py-1 rounded-full">
-                      {powerFilter.length + connectorFilter.length + (freeOnly ? 1 : 0)}
+                      {powerFilter.length + connectorFilter.length + (freeOnly ? 1 : 0) + (maxDistance < 50 ? 1 : 0)}
                     </span>
                   )}
                 </Button>
@@ -195,6 +154,14 @@ const Index = () => {
                         Effacer tout
                       </Button>
                     </div>
+
+                    {!hasActiveFilters && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700">
+                          <span className="font-medium">Mode par défaut :</span> Affichage des 10 bornes les plus proches de votre position
+                        </p>
+                      </div>
+                    )}
 
                     {/* Filtre par puissance */}
                     <div className="space-y-2">
@@ -358,11 +325,11 @@ const Index = () => {
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardContent className="p-4 text-center">
                     <p className="text-muted-foreground">
-                      {filteredStations.length === 0 && stations.length > 0 ? 
+                      {hasActiveFilters ? 
                        'Aucune borne ne correspond aux filtres sélectionnés' :
                        'Aucune borne trouvée dans le fichier GeoJSON'}
                     </p>
-                    {filteredStations.length === 0 && stations.length > 0 && (
+                    {hasActiveFilters && (
                       <Button
                         variant="outline"
                         size="sm"
