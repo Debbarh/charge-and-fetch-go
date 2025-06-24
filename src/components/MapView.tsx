@@ -1,6 +1,5 @@
-
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Zap, Navigation, Locate, X } from 'lucide-react';
+import { MapPin, Zap, Navigation, Locate, X, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChargingStations } from '../hooks/useChargingStations';
 import { useUserLocation } from '../hooks/useUserLocation';
@@ -136,6 +135,35 @@ const MapView = () => {
     if (userLocation) {
       mapInstanceRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
     }
+  };
+
+  // Function to open navigation app
+  const openNavigation = () => {
+    if (!selectedStation || !userLocation) return;
+    
+    const { lat, lng } = selectedStation;
+    const destination = `${lat},${lng}`;
+    const origin = `${userLocation.latitude},${userLocation.longitude}`;
+    
+    // Try to detect the platform and open the appropriate navigation app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    if (isIOS) {
+      // For iOS, try Apple Maps first, then Google Maps
+      const appleMapsUrl = `maps://maps.apple.com/?daddr=${destination}&saddr=${origin}&dirflg=d`;
+      window.open(appleMapsUrl);
+    } else if (isAndroid) {
+      // For Android, try Google Maps
+      const googleMapsUrl = `google.navigation:q=${destination}&mode=d`;
+      window.open(googleMapsUrl);
+    } else {
+      // For web browsers, open Google Maps in a new tab
+      const webMapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
+      window.open(webMapsUrl, '_blank');
+    }
+    
+    console.log('Navigation ouverte vers:', selectedStation.nom_station);
   };
 
   // Update user location marker when position changes
@@ -339,9 +367,15 @@ const MapView = () => {
       {selectedStation && (
         <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
           <span>Itinéraire vers: {selectedStation.nom_station}</span>
-          <Button size="sm" variant="ghost" onClick={clearRoute}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="default" onClick={openNavigation} className="bg-blue-600 hover:bg-blue-700">
+              <Route className="h-4 w-4 mr-1" />
+              Y aller
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearRoute}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 
