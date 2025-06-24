@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,34 +39,8 @@ interface ClientRequest {
   status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
 }
 
-interface DriverProfile {
-  name: string;
-  phone: string;
-  experience: string;
-  vehicle: string;
-  notes: string;
-  rating: number;
-  totalRides: number;
-  completionRate: number;
-  responseTime: string;
-  specialties: string[];
-}
-
 const DriverService = () => {
-  const [isDriver, setIsDriver] = useState(false);
-  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network'>('available');
-  const [driverProfile, setDriverProfile] = useState<DriverProfile>({
-    name: '',
-    phone: '',
-    experience: '',
-    vehicle: '',
-    notes: '',
-    rating: 4.9,
-    totalRides: 127,
-    completionRate: 98,
-    responseTime: '< 5 min',
-    specialties: ['Véhicules électriques', 'Urgences', 'Longue distance']
-  });
+  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network'>('network');
   const [counterOffer, setCounterOffer] = useState({
     requestId: 0,
     newPrice: '',
@@ -143,15 +118,6 @@ const DriverService = () => {
     }
   ];
 
-  const handleBecomeDriver = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsDriver(true);
-    toast({
-      title: "Inscription validée !",
-      description: "Vous êtes maintenant chauffeur-valet. Vous pouvez voir les demandes disponibles.",
-    });
-  };
-
   const handleAcceptRequest = (requestId: number) => {
     // Simulate creating an offer
     const newOffer = {
@@ -182,21 +148,21 @@ const DriverService = () => {
     const driverOffer = {
       id: Date.now(),
       driverId: 1,
-      driverName: driverProfile.name || 'Chauffeur Pro',
-      driverRating: driverProfile.rating,
-      driverTotalRides: driverProfile.totalRides,
-      driverVehicle: driverProfile.vehicle || 'Peugeot 208',
-      driverExperience: driverProfile.experience || '5 ans d\'expérience',
+      driverName: 'Chauffeur Pro',
+      driverRating: 4.9,
+      driverTotalRides: 127,
+      driverVehicle: 'Peugeot 208',
+      driverExperience: '5 ans d\'expérience',
       originalRequestId: requestId,
       proposedPrice: request.proposedPrice,
       estimatedDuration: request.estimatedDuration,
       message: 'J\'accepte votre demande aux conditions proposées !',
-      driverPhone: driverProfile.phone || '+33 6 12 34 56 78',
+      driverPhone: '+33 6 12 34 56 78',
       status: 'pending',
       receivedAt: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
       negotiationHistory: [],
-      responseTime: driverProfile.responseTime,
+      responseTime: '< 5 min',
       availability: 'Immédiate'
     };
 
@@ -246,16 +212,16 @@ const DriverService = () => {
     const driverOffer = {
       id: Date.now(),
       driverId: 1,
-      driverName: driverProfile.name || 'Chauffeur Pro',
-      driverRating: driverProfile.rating,
-      driverTotalRides: driverProfile.totalRides,
-      driverVehicle: driverProfile.vehicle || 'Peugeot 208',
-      driverExperience: driverProfile.experience || '5 ans d\'expérience',
+      driverName: 'Chauffeur Pro',
+      driverRating: 4.9,
+      driverTotalRides: 127,
+      driverVehicle: 'Peugeot 208',
+      driverExperience: '5 ans d\'expérience',
       originalRequestId: counterOffer.requestId,
       proposedPrice: counterOffer.newPrice,
       estimatedDuration: counterOffer.newDuration || request.estimatedDuration,
       message: counterOffer.message,
-      driverPhone: driverProfile.phone || '+33 6 12 34 56 78',
+      driverPhone: '+33 6 12 34 56 78',
       status: 'pending',
       receivedAt: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
@@ -268,7 +234,7 @@ const DriverService = () => {
         message: counterOffer.message,
         status: 'pending'
       }],
-      responseTime: driverProfile.responseTime,
+      responseTime: '< 5 min',
       availability: 'Immédiate'
     };
 
@@ -302,120 +268,6 @@ const DriverService = () => {
     }
   };
 
-  if (!isDriver) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Devenir Chauffeur-Valet</h2>
-          <p className="text-muted-foreground">Gagnez de l'argent en aidant les propriétaires de véhicules électriques</p>
-        </div>
-
-        <Card className="bg-gradient-to-r from-blue-50 to-electric-50 border-blue-200">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-blue-800 mb-4">Pourquoi devenir chauffeur-valet ?</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <Euro className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-700">Revenus flexibles</p>
-                <p className="text-xs text-blue-600">15-35€ par service</p>
-              </div>
-              <div className="text-center">
-                <Clock className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-700">Horaires libres</p>
-                <p className="text-xs text-blue-600">Travaillez quand vous voulez</p>
-              </div>
-              <div className="text-center">
-                <Car className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-700">Simple</p>
-                <p className="text-xs text-blue-600">Récupérer, recharger, livrer</p>
-              </div>
-              <div className="text-center">
-                <CheckCircle className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-700">Sécurisé</p>
-                <p className="text-xs text-blue-600">Assurance incluse</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Inscription Chauffeur</CardTitle>
-            <CardDescription>Remplissez ce formulaire pour commencer</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleBecomeDriver} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom complet</Label>
-                  <Input
-                    id="name"
-                    placeholder="Jean Dupont"
-                    value={driverProfile.name}
-                    onChange={(e) => setDriverProfile({ ...driverProfile, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+33 6 12 34 56 78"
-                    value={driverProfile.phone}
-                    onChange={(e) => setDriverProfile({ ...driverProfile, phone: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="vehicle">Votre véhicule</Label>
-                <Input
-                  id="vehicle"
-                  placeholder="Renault Clio, Peugeot 208..."
-                  value={driverProfile.vehicle}
-                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="experience">Expérience de conduite</Label>
-                <Input
-                  id="experience"
-                  placeholder="5 ans de permis, habitué des véhicules électriques..."
-                  value={driverProfile.experience}
-                  onChange={(e) => setDriverProfile({ ...driverProfile, experience: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Informations supplémentaires (optionnel)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Disponibilités, zones de prédilection..."
-                  value={driverProfile.notes}
-                  onChange={(e) => setDriverProfile({ ...driverProfile, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-500 to-electric-500 hover:from-blue-600 hover:to-electric-600"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Devenir Chauffeur-Valet
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -429,7 +281,7 @@ const DriverService = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="font-semibold text-electric-800 mb-1">
-                {driverProfile.name || 'Chauffeur'} 
+                Chauffeur Pro
                 <Badge className="ml-2 bg-green-100 text-green-700">
                   <Award className="h-3 w-3 mr-1" />
                   Chauffeur Vérifié
@@ -438,20 +290,20 @@ const DriverService = () => {
               <div className="flex items-center gap-4 text-sm text-electric-600">
                 <div className="flex items-center gap-1">
                   <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                  <span className="font-medium">{driverProfile.rating}</span>
-                  <span className="text-electric-500">({driverProfile.totalRides} courses)</span>
+                  <span className="font-medium">4.9</span>
+                  <span className="text-electric-500">(127 courses)</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-4 w-4" />
-                  <span>{driverProfile.completionRate}% réussite</span>
+                  <span>98% réussite</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>Répond en {driverProfile.responseTime}</span>
+                  <span>Répond en < 5 min</span>
                 </div>
               </div>
               <div className="flex gap-1 mt-2">
-                {driverProfile.specialties.map((specialty, index) => (
+                {['Véhicules électriques', 'Urgences', 'Longue distance'].map((specialty, index) => (
                   <Badge key={index} variant="outline" className="text-xs">
                     {specialty}
                   </Badge>
@@ -459,7 +311,7 @@ const DriverService = () => {
               </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-electric-600">⭐ {driverProfile.rating}</div>
+              <div className="text-2xl font-bold text-electric-600">⭐ 4.9</div>
               <p className="text-xs text-electric-600">Note actuelle</p>
             </div>
           </div>
@@ -699,7 +551,7 @@ const DriverService = () => {
         </div>
       )}
 
-      {/* New Network Tab */}
+      {/* Network Tab */}
       {activeTab === 'network' && (
         <NearbyChargersDrivers />
       )}

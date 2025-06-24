@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Car, Users, Home, Zap, MapPin, Euro, Clock, Star, Plus, Edit3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,12 +33,26 @@ interface ChargingStationHost {
   rating: number;
 }
 
+interface DriverProfile {
+  name: string;
+  phone: string;
+  experience: string;
+  vehicle: string;
+  notes: string;
+  rating: number;
+  totalRides: number;
+  completionRate: number;
+  responseTime: string;
+  specialties: string[];
+}
+
 const ProfileManagement = () => {
   const [activeRole, setActiveRole] = useState<'client' | 'driver' | 'host'>('client');
   const [isDriver, setIsDriver] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [showAddStationDialog, setShowAddStationDialog] = useState(false);
   const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
+  const [showDriverRegistrationDialog, setShowDriverRegistrationDialog] = useState(false);
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -49,6 +62,19 @@ const ProfileManagement = () => {
     rating: 4.9,
     totalServices: 23,
     monthlyEarnings: 347
+  });
+
+  const [driverProfile, setDriverProfile] = useState<DriverProfile>({
+    name: '',
+    phone: '',
+    experience: '',
+    vehicle: '',
+    notes: '',
+    rating: 4.9,
+    totalRides: 127,
+    completionRate: 98,
+    responseTime: '< 5 min',
+    specialties: ['Véhicules électriques', 'Urgences', 'Longue distance']
   });
 
   const [newStation, setNewStation] = useState({
@@ -77,11 +103,13 @@ const ProfileManagement = () => {
     }
   ]);
 
-  const handleBecomeDriver = () => {
+  const handleBecomeDriver = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsDriver(true);
+    setShowDriverRegistrationDialog(false);
     toast({
-      title: "Profil chauffeur activé !",
-      description: "Vous pouvez maintenant accepter des demandes de valet.",
+      title: "Inscription validée !",
+      description: "Vous êtes maintenant chauffeur-valet. Vous pouvez voir les demandes disponibles.",
     });
   };
 
@@ -229,7 +257,7 @@ const ProfileManagement = () => {
             {!isDriver && (
               <Button
                 variant="outline"
-                onClick={handleBecomeDriver}
+                onClick={() => setShowDriverRegistrationDialog(true)}
                 className="border-electric-300 text-electric-700 hover:bg-electric-50"
               >
                 <Users className="h-4 w-4 mr-2" />
@@ -414,6 +442,90 @@ const ProfileManagement = () => {
           )}
         </div>
       )}
+
+      {/* Dialog pour devenir chauffeur */}
+      <Dialog open={showDriverRegistrationDialog} onOpenChange={setShowDriverRegistrationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inscription Chauffeur</DialogTitle>
+            <DialogDescription>
+              Remplissez ce formulaire pour devenir chauffeur-valet
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleBecomeDriver} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom complet</Label>
+                <Input
+                  id="name"
+                  placeholder="Jean Dupont"
+                  value={driverProfile.name}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+33 6 12 34 56 78"
+                  value={driverProfile.phone}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, phone: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vehicle">Votre véhicule</Label>
+              <Input
+                id="vehicle"
+                placeholder="Renault Clio, Peugeot 208..."
+                value={driverProfile.vehicle}
+                onChange={(e) => setDriverProfile({ ...driverProfile, vehicle: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="experience">Expérience de conduite</Label>
+              <Input
+                id="experience"
+                placeholder="5 ans de permis, habitué des véhicules électriques..."
+                value={driverProfile.experience}
+                onChange={(e) => setDriverProfile({ ...driverProfile, experience: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Informations supplémentaires (optionnel)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Disponibilités, zones de prédilection..."
+                value={driverProfile.notes}
+                onChange={(e) => setDriverProfile({ ...driverProfile, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDriverRegistrationDialog(false)}>
+                Annuler
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-gradient-to-r from-blue-500 to-electric-500 hover:from-blue-600 hover:to-electric-600"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Devenir Chauffeur-Valet
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog pour ajouter une borne */}
       <Dialog open={showAddStationDialog} onOpenChange={setShowAddStationDialog}>
