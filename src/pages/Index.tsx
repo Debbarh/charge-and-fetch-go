@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X } from 'lucide-react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import MapView from '@/components/MapView';
 import ValetService from '@/components/ValetService';
 import DriverService from '@/components/DriverService';
+import ClientOffers from '@/components/ClientOffers';
 import BookingModal from '@/components/BookingModal';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useChargingStations } from '@/hooks/useChargingStations';
@@ -15,6 +16,7 @@ import { formatDistance } from '@/utils/geoUtils';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('map');
+  const [clientTab, setClientTab] = useState<'services' | 'offers'>('services'); // Nouveau state pour les sous-onglets client
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -363,7 +365,41 @@ const Index = () => {
         );
 
       case 'valet':
-        return <ValetService services={valetServices} onBooking={() => setIsBookingOpen(true)} />;
+        return (
+          <div className="space-y-4">
+            {/* Navigation tabs pour client */}
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setClientTab('services')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  clientTab === 'services'
+                    ? 'bg-white text-electric-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Services Valet
+              </button>
+              <button
+                onClick={() => setClientTab('offers')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  clientTab === 'offers'
+                    ? 'bg-white text-electric-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Heart className="h-4 w-4 inline mr-1" />
+                Mes Offres
+              </button>
+            </div>
+
+            {/* Contenu conditionnel */}
+            {clientTab === 'services' ? (
+              <ValetService services={valetServices} onBooking={() => setIsBookingOpen(true)} />
+            ) : (
+              <ClientOffers />
+            )}
+          </div>
+        );
 
       case 'driver':
         return <DriverService />;
