@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface DriverRequest {
@@ -37,15 +37,33 @@ interface ClientRequest {
   status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
 }
 
+interface DriverProfile {
+  name: string;
+  phone: string;
+  experience: string;
+  vehicle: string;
+  notes: string;
+  rating: number;
+  totalRides: number;
+  completionRate: number;
+  responseTime: string;
+  specialties: string[];
+}
+
 const DriverService = () => {
   const [isDriver, setIsDriver] = useState(false);
-  const [activeTab, setActiveTab] = useState<'available' | 'client_requests'>('available');
-  const [driverProfile, setDriverProfile] = useState({
+  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers'>('available');
+  const [driverProfile, setDriverProfile] = useState<DriverProfile>({
     name: '',
     phone: '',
     experience: '',
     vehicle: '',
-    notes: ''
+    notes: '',
+    rating: 4.9,
+    totalRides: 127,
+    completionRate: 98,
+    responseTime: '< 5 min',
+    specialties: ['Véhicules électriques', 'Urgences', 'Longue distance']
   });
   const [counterOffer, setCounterOffer] = useState({
     requestId: 0,
@@ -54,34 +72,8 @@ const DriverService = () => {
     message: ''
   });
   const [showCounterOfferDialog, setShowCounterOfferDialog] = useState(false);
+  const [myOffers, setMyOffers] = useState<any[]>([]);
   const { toast } = useToast();
-
-  const availableRequests: DriverRequest[] = [
-    {
-      id: 1,
-      customerName: "Marie L.",
-      pickupAddress: "123 Rue de Rivoli, Paris",
-      returnAddress: "123 Rue de Rivoli, Paris",
-      vehicleModel: "Tesla Model 3",
-      estimatedTime: "2h",
-      payment: "25€",
-      distance: "1.2 km",
-      batteryLevel: 15,
-      urgency: 'high'
-    },
-    {
-      id: 2,
-      customerName: "Jean D.",
-      pickupAddress: "45 Avenue des Champs, Paris",
-      returnAddress: "45 Avenue des Champs, Paris",
-      vehicleModel: "Renault Zoe",
-      estimatedTime: "3h",
-      payment: "18€",
-      distance: "0.8 km",
-      batteryLevel: 25,
-      urgency: 'medium'
-    }
-  ];
 
   // Simulated client requests from the ClientRequestForm
   const clientRequests: ClientRequest[] = [
@@ -115,6 +107,41 @@ const DriverService = () => {
     }
   ];
 
+  // Load driver offers from localStorage
+  useEffect(() => {
+    const savedOffers = localStorage.getItem('driverOffers');
+    if (savedOffers) {
+      setMyOffers(JSON.parse(savedOffers));
+    }
+  }, []);
+
+  const availableRequests: DriverRequest[] = [
+    {
+      id: 1,
+      customerName: "Marie L.",
+      pickupAddress: "123 Rue de Rivoli, Paris",
+      returnAddress: "123 Rue de Rivoli, Paris",
+      vehicleModel: "Tesla Model 3",
+      estimatedTime: "2h",
+      payment: "25€",
+      distance: "1.2 km",
+      batteryLevel: 15,
+      urgency: 'high'
+    },
+    {
+      id: 2,
+      customerName: "Jean D.",
+      pickupAddress: "45 Avenue des Champs, Paris",
+      returnAddress: "45 Avenue des Champs, Paris",
+      vehicleModel: "Renault Zoe",
+      estimatedTime: "3h",
+      payment: "18€",
+      distance: "0.8 km",
+      batteryLevel: 25,
+      urgency: 'medium'
+    }
+  ];
+
   const handleBecomeDriver = (e: React.FormEvent) => {
     e.preventDefault();
     setIsDriver(true);
@@ -125,16 +152,76 @@ const DriverService = () => {
   };
 
   const handleAcceptRequest = (requestId: number) => {
+    // Simulate creating an offer
+    const newOffer = {
+      id: Date.now(),
+      requestId: requestId,
+      status: 'sent',
+      proposedPrice: Math.floor(Math.random() * 20) + 20,
+      estimatedDuration: `${Math.floor(Math.random() * 3) + 2}h`,
+      message: 'Je peux prendre en charge votre demande rapidement !',
+      sentAt: new Date().toISOString()
+    };
+
+    const updatedOffers = [...myOffers, newOffer];
+    setMyOffers(updatedOffers);
+    localStorage.setItem('driverOffers', JSON.stringify(updatedOffers));
+
     toast({
-      title: "Demande acceptée !",
-      description: "Le client a été notifié. Dirigez-vous vers l'adresse de récupération.",
+      title: "Offre envoyée !",
+      description: "Votre proposition a été envoyée au client.",
     });
   };
 
   const handleAcceptClientRequest = (requestId: number) => {
+    const request = clientRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    // Create driver offer and add to localStorage for ClientOffers component
+    const driverOffer = {
+      id: Date.now(),
+      driverId: 1,
+      driverName: driverProfile.name || 'Chauffeur Pro',
+      driverRating: driverProfile.rating,
+      driverTotalRides: driverProfile.totalRides,
+      driverVehicle: driverProfile.vehicle || 'Peugeot 208',
+      driverExperience: driverProfile.experience || '5 ans d\'expérience',
+      originalRequestId: requestId,
+      proposedPrice: request.proposedPrice,
+      estimatedDuration: request.estimatedDuration,
+      message: 'J\'accepte votre demande aux conditions proposées !',
+      driverPhone: driverProfile.phone || '+33 6 12 34 56 78',
+      status: 'pending',
+      receivedAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+      negotiationHistory: [],
+      responseTime: driverProfile.responseTime,
+      availability: 'Immédiate'
+    };
+
+    // Add to received offers in localStorage
+    const existingOffers = JSON.parse(localStorage.getItem('receivedOffers') || '[]');
+    const updatedOffers = [...existingOffers, driverOffer];
+    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
+
+    // Add to my offers tracking
+    const myOffer = {
+      id: driverOffer.id,
+      requestId: requestId,
+      status: 'sent',
+      proposedPrice: request.proposedPrice,
+      estimatedDuration: request.estimatedDuration,
+      message: driverOffer.message,
+      sentAt: new Date().toISOString()
+    };
+
+    const updatedMyOffers = [...myOffers, myOffer];
+    setMyOffers(updatedMyOffers);
+    localStorage.setItem('driverOffers', JSON.stringify(updatedMyOffers));
+
     toast({
       title: "Demande client acceptée !",
-      description: "Le client a été notifié de votre acceptation. Vous recevrez ses coordonnées.",
+      description: "Le client a été notifié de votre acceptation.",
     });
   };
 
@@ -151,9 +238,46 @@ const DriverService = () => {
   };
 
   const submitCounterOffer = () => {
+    const request = clientRequests.find(r => r.id === counterOffer.requestId);
+    if (!request) return;
+
+    // Create counter-offer and add to localStorage
+    const driverOffer = {
+      id: Date.now(),
+      driverId: 1,
+      driverName: driverProfile.name || 'Chauffeur Pro',
+      driverRating: driverProfile.rating,
+      driverTotalRides: driverProfile.totalRides,
+      driverVehicle: driverProfile.vehicle || 'Peugeot 208',
+      driverExperience: driverProfile.experience || '5 ans d\'expérience',
+      originalRequestId: counterOffer.requestId,
+      proposedPrice: counterOffer.newPrice,
+      estimatedDuration: counterOffer.newDuration || request.estimatedDuration,
+      message: counterOffer.message,
+      driverPhone: driverProfile.phone || '+33 6 12 34 56 78',
+      status: 'pending',
+      receivedAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+      negotiationHistory: [{
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        from: 'driver',
+        price: counterOffer.newPrice,
+        duration: counterOffer.newDuration,
+        message: counterOffer.message,
+        status: 'pending'
+      }],
+      responseTime: driverProfile.responseTime,
+      availability: 'Immédiate'
+    };
+
+    const existingOffers = JSON.parse(localStorage.getItem('receivedOffers') || '[]');
+    const updatedOffers = [...existingOffers, driverOffer];
+    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
+
     toast({
       title: "Contre-proposition envoyée !",
-      description: "Le client recevra votre nouvelle proposition et pourra l'accepter ou la refuser.",
+      description: "Le client recevra votre nouvelle proposition.",
     });
     setShowCounterOfferDialog(false);
     setCounterOffer({ requestId: 0, newPrice: '', newDuration: '', message: '' });
@@ -298,22 +422,50 @@ const DriverService = () => {
         <p className="text-muted-foreground">Gérez vos demandes et trouvez de nouveaux clients</p>
       </div>
 
+      {/* Enhanced Driver Profile Card */}
       <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-electric-800">Bienvenue, {driverProfile.name || 'Chauffeur'} !</h3>
-              <p className="text-electric-600 text-sm">Prêt pour de nouveaux services</p>
+            <div className="flex-1">
+              <h3 className="font-semibold text-electric-800 mb-1">
+                {driverProfile.name || 'Chauffeur'} 
+                <Badge className="ml-2 bg-green-100 text-green-700">
+                  <Award className="h-3 w-3 mr-1" />
+                  Chauffeur Vérifié
+                </Badge>
+              </h3>
+              <div className="flex items-center gap-4 text-sm text-electric-600">
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                  <span className="font-medium">{driverProfile.rating}</span>
+                  <span className="text-electric-500">({driverProfile.totalRides} courses)</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>{driverProfile.completionRate}% réussite</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>Répond en {driverProfile.responseTime}</span>
+                </div>
+              </div>
+              <div className="flex gap-1 mt-2">
+                {driverProfile.specialties.map((specialty, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {specialty}
+                  </Badge>
+                ))}
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-electric-600">⭐ 4.9</div>
-              <p className="text-xs text-electric-600">Note moyenne</p>
+              <div className="text-2xl font-bold text-electric-600">⭐ {driverProfile.rating}</div>
+              <p className="text-xs text-electric-600">Note actuelle</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Navigation Tabs */}
+      {/* Enhanced Navigation Tabs */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('available')}
@@ -334,6 +486,16 @@ const DriverService = () => {
           }`}
         >
           Demandes Clients
+        </button>
+        <button
+          onClick={() => setActiveTab('my_offers')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'my_offers'
+              ? 'bg-white text-electric-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Mes Offres ({myOffers.length})
         </button>
       </div>
 
@@ -478,6 +640,50 @@ const DriverService = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* My Offers Tab */}
+      {activeTab === 'my_offers' && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Mes offres envoyées</h3>
+          {myOffers.length === 0 ? (
+            <Card className="bg-gray-50">
+              <CardContent className="p-6 text-center">
+                <p className="text-gray-600">Aucune offre envoyée pour le moment</p>
+              </CardContent>
+            </Card>
+          ) : (
+            myOffers.map((offer) => (
+              <Card key={offer.id} className="hover:shadow-md transition-all duration-200">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">Demande #{offer.requestId}</h4>
+                        <Badge className={
+                          offer.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                          offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                          'bg-red-100 text-red-700'
+                        }>
+                          {offer.status === 'sent' ? 'Envoyée' : 
+                           offer.status === 'accepted' ? 'Acceptée' : 'Rejetée'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{offer.message}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Envoyée le {new Date(offer.sentAt).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-electric-600">{offer.proposedPrice}€</div>
+                      <div className="text-xs text-muted-foreground">{offer.estimatedDuration}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       )}
 
