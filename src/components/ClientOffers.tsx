@@ -279,7 +279,7 @@ const ClientOffers = () => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Mes Offres Reçues</h2>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Faire une proposition</h2>
         <p className="text-muted-foreground">Gérez les propositions des chauffeurs</p>
       </div>
 
