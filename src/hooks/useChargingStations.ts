@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { ChargingStationData, parseChargingStationsCSV } from '../utils/csvParser';
+import { ChargingStationData, parseChargingStationsGeoJSON } from '../utils/geoJsonParser';
 
 export const useChargingStations = () => {
   const [stations, setStations] = useState<ChargingStationData[]>([]);
@@ -12,16 +12,16 @@ export const useChargingStations = () => {
       try {
         setIsLoading(true);
         
-        // Load the CSV file from the public directory
-        const response = await fetch('/consolidation-etalab-schema-irve-statique-v-2.3.1-20250624.csv');
+        // Load the GeoJSON file from the public directory
+        const response = await fetch('/test.geojson');
         if (!response.ok) {
           throw new Error('Impossible de charger les données des bornes');
         }
         
-        const csvContent = await response.text();
-        const parsedStations = parseChargingStationsCSV(csvContent);
+        const geoJsonContent = await response.text();
+        const parsedStations = parseChargingStationsGeoJSON(geoJsonContent);
         
-        console.log(`${parsedStations.length} bornes chargées depuis le CSV`);
+        console.log(`${parsedStations.length} bornes chargées depuis le GeoJSON`);
         setStations(parsedStations);
         setError(null);
       } catch (err) {
