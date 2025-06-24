@@ -467,40 +467,40 @@ const DriverService = () => {
       </Card>
 
       {/* Enhanced Navigation Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+      <div className="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('available')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
             activeTab === 'available'
               ? 'bg-white text-electric-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Demandes Standard
+          Demandes
         </button>
         <button
           onClick={() => setActiveTab('client_requests')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
             activeTab === 'client_requests'
               ? 'bg-white text-electric-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Demandes Clients
+          Clients
         </button>
         <button
           onClick={() => setActiveTab('my_offers')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
             activeTab === 'my_offers'
               ? 'bg-white text-electric-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Mes Offres ({myOffers.length})
+          Offres ({myOffers.length})
         </button>
         <button
           onClick={() => setActiveTab('network')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
             activeTab === 'network'
               ? 'bg-white text-electric-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
