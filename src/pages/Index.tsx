@@ -14,6 +14,7 @@ import BookingModal from '@/components/BookingModal';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useChargingStations } from '@/hooks/useChargingStations';
 import { formatDistance } from '@/utils/geoUtils';
+import ProfileManagement from '@/components/ProfileManagement';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('map');
@@ -431,60 +432,7 @@ const Index = () => {
         );
 
       case 'profile':
-        return (
-          <div className="space-y-6">
-            <Card className="bg-gradient-to-r from-blue-50 to-electric-50">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-r from-electric-400 to-blue-400 rounded-full flex items-center justify-center">
-                    <User className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Jean Dupont</h3>
-                    <p className="text-muted-foreground">jean.dupont@email.com</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-sm text-muted-foreground">4.9 (23 services)</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-foreground">Mon véhicule</h3>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">Tesla Model 3</h4>
-                      <p className="text-sm text-muted-foreground">AB-123-CD</p>
-                    </div>
-                    <Zap className="h-6 w-6 text-electric-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-foreground">Statistiques</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-electric-600">1,247</div>
-                    <p className="text-sm text-muted-foreground">kWh rechargés</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-blue-600">23</div>
-                    <p className="text-sm text-muted-foreground">Services utilisés</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        );
+        return <ProfileManagement />;
 
       default:
         return null;
