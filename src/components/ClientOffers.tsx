@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, MessageSquare, ArrowLeftRight, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -85,7 +86,13 @@ const ClientOffers = () => {
     }
     
     if (offers) {
-      setReceivedOffers(JSON.parse(offers));
+      const parsedOffers = JSON.parse(offers);
+      // Ensure negotiationHistory is always an array
+      const safeOffers = parsedOffers.map((offer: any) => ({
+        ...offer,
+        negotiationHistory: offer.negotiationHistory || []
+      }));
+      setReceivedOffers(safeOffers);
     }
   }, []);
 
@@ -155,7 +162,7 @@ const ClientOffers = () => {
             ...offer, 
             status: 'negotiating' as const,
             lastActivity: new Date().toISOString(),
-            negotiationHistory: [...offer.negotiationHistory, newNegotiation]
+            negotiationHistory: [...(offer.negotiationHistory || []), newNegotiation]
           }
         : offer
     );
@@ -390,9 +397,9 @@ const ClientOffers = () => {
                         <Badge className={getStatusColor(offer.status)}>
                           {getStatusLabel(offer.status)}
                         </Badge>
-                        {offer.negotiationHistory.length > 0 && (
+                        {(offer.negotiationHistory || []).length > 0 && (
                           <Badge variant="outline" className="text-blue-600">
-                            {offer.negotiationHistory.length} échange(s)
+                            {(offer.negotiationHistory || []).length} échange(s)
                           </Badge>
                         )}
                       </div>
@@ -583,7 +590,7 @@ const ClientOffers = () => {
           </DialogHeader>
           
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {selectedOffer?.negotiationHistory.map((nego, index) => (
+            {(selectedOffer?.negotiationHistory || []).map((nego, index) => (
               <div key={nego.id} className={`p-3 rounded-lg ${
                 nego.from === 'client' ? 'bg-electric-50 ml-4' : 'bg-gray-50 mr-4'
               }`}>
@@ -601,7 +608,7 @@ const ClientOffers = () => {
                 {nego.message && (
                   <p className="text-sm text-gray-600">{nego.message}</p>
                 )}
-                <Badge className={getStatusColor(nego.status)} size="sm">
+                <Badge className={getStatusColor(nego.status)}>
                   {getStatusLabel(nego.status)}
                 </Badge>
               </div>
