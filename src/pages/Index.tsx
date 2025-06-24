@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star } from 'lucide-react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import MapView from '@/components/MapView';
 import ValetService from '@/components/ValetService';
+import DriverService from '@/components/DriverService';
 import BookingModal from '@/components/BookingModal';
 
 const Index = () => {
@@ -14,8 +14,9 @@ const Index = () => {
 
   const tabs = [
     { id: 'map', label: 'Carte', icon: MapPin },
-    { id: 'valet', label: 'Valet', icon: Car },
-    { id: 'bookings', label: 'Réservations', icon: Clock },
+    { id: 'valet', label: 'Client', icon: Car },
+    { id: 'driver', label: 'Chauffeur', icon: Users },
+    { id: 'bookings', label: 'Historique', icon: Clock },
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
@@ -76,10 +77,13 @@ const Index = () => {
       case 'valet':
         return <ValetService services={valetServices} onBooking={() => setIsBookingOpen(true)} />;
 
+      case 'driver':
+        return <DriverService />;
+
       case 'bookings':
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Mes Réservations</h2>
+            <h2 className="text-2xl font-bold text-foreground">Historique</h2>
             <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -95,7 +99,7 @@ const Index = () => {
             </Card>
             
             <div className="text-center py-8">
-              <p className="text-muted-foreground">Aucune autre réservation</p>
+              <p className="text-muted-foreground">Aucune autre activité récente</p>
             </div>
           </div>
         );
@@ -148,7 +152,7 @@ const Index = () => {
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-blue-600">23</div>
-                    <p className="text-sm text-muted-foreground">Services valet</p>
+                    <p className="text-sm text-muted-foreground">Services utilisés</p>
                   </CardContent>
                 </Card>
               </div>
@@ -171,7 +175,7 @@ const Index = () => {
               <h1 className="text-xl font-bold bg-gradient-to-r from-electric-600 to-blue-600 bg-clip-text text-transparent">
                 ElectricValet
               </h1>
-              <p className="text-sm text-muted-foreground">Recharge intelligente</p>
+              <p className="text-sm text-muted-foreground">Recharge collaborative</p>
             </div>
             <Button
               variant="outline"
@@ -193,7 +197,7 @@ const Index = () => {
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-electric-100 z-50">
-        <div className="grid grid-cols-4 gap-1 p-2">
+        <div className="grid grid-cols-5 gap-1 p-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
