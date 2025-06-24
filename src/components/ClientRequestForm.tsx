@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MapPin, Clock, Car, Euro, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
-const ClientRequestForm = () => {
+interface ClientRequestFormProps {
+  onRequestPublished?: () => void;
+}
+
+const ClientRequestForm = ({ onRequestPublished }: ClientRequestFormProps) => {
   const [requestForm, setRequestForm] = useState({
     pickupAddress: '',
     destinationAddress: '',
@@ -25,10 +28,58 @@ const ClientRequestForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Stocker la demande dans localStorage pour simulation
+    const newRequest = {
+      id: Date.now(),
+      ...requestForm,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('activeClientRequest', JSON.stringify(newRequest));
+    
+    // Simuler des offres qui arrivent après la publication
+    setTimeout(() => {
+      const simulatedOffers = [
+        {
+          id: Date.now() + 1,
+          driverId: 201,
+          driverName: "Marc D.",
+          driverRating: 4.8,
+          driverVehicle: "Renault Clio",
+          originalRequestId: newRequest.id,
+          proposedPrice: requestForm.proposedPrice,
+          estimatedDuration: requestForm.estimatedDuration || "3h",
+          message: "Je peux récupérer votre véhicule dans 20 minutes. J'ai l'habitude des véhicules électriques.",
+          driverPhone: "+33 6 12 34 56 78",
+          status: 'pending',
+          receivedAt: new Date().toISOString()
+        },
+        {
+          id: Date.now() + 2,
+          driverId: 202,
+          driverName: "Sophie L.",
+          driverRating: 4.9,
+          driverVehicle: "Peugeot 208",
+          originalRequestId: newRequest.id,
+          proposedPrice: (parseInt(requestForm.proposedPrice) - 5).toString(),
+          estimatedDuration: "4h",
+          message: "Je propose un prix légèrement inférieur et j'inclus un lavage gratuit !",
+          driverPhone: "+33 6 98 76 54 32",
+          status: 'pending',
+          receivedAt: new Date(Date.now() + 300000).toISOString() // 5 min plus tard
+        }
+      ];
+      
+      localStorage.setItem('receivedOffers', JSON.stringify(simulatedOffers));
+    }, 1000);
+
     toast({
       title: "Demande publiée !",
       description: "Votre demande a été envoyée aux chauffeurs disponibles. Vous recevrez des offres bientôt.",
     });
+
     // Reset form
     setRequestForm({
       pickupAddress: '',
@@ -41,6 +92,11 @@ const ClientRequestForm = () => {
       notes: '',
       contactPhone: ''
     });
+
+    // Rediriger vers l'onglet des offres
+    if (onRequestPublished) {
+      onRequestPublished();
+    }
   };
 
   return (

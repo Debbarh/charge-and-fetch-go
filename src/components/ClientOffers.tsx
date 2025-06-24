@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +30,7 @@ interface ClientRequest {
   pickupAddress: string;
   destinationAddress: string;
   vehicleModel: string;
-  originalPrice: string;
+  proposedPrice: string;
   status: 'active' | 'completed' | 'cancelled';
   createdAt: string;
 }
@@ -42,66 +42,23 @@ const ClientOffers = () => {
     newPrice: '',
     message: ''
   });
+  const [clientRequest, setClientRequest] = useState<ClientRequest | null>(null);
+  const [receivedOffers, setReceivedOffers] = useState<DriverOffer[]>([]);
   const { toast } = useToast();
 
-  // Simulation des demandes du client
-  const clientRequests: ClientRequest[] = [
-    {
-      id: 101,
-      pickupAddress: "78 Boulevard Saint-Germain, Paris",
-      destinationAddress: "Tesla Supercharger République",
-      vehicleModel: "Peugeot e-208",
-      originalPrice: "35",
-      status: 'active',
-      createdAt: "2024-06-24T10:30:00Z"
+  // Charger les données depuis localStorage
+  useEffect(() => {
+    const activeRequest = localStorage.getItem('activeClientRequest');
+    const offers = localStorage.getItem('receivedOffers');
+    
+    if (activeRequest) {
+      setClientRequest(JSON.parse(activeRequest));
     }
-  ];
-
-  // Simulation des offres reçues
-  const receivedOffers: DriverOffer[] = [
-    {
-      id: 1,
-      driverId: 201,
-      driverName: "Marc D.",
-      driverRating: 4.8,
-      driverVehicle: "Renault Clio",
-      originalRequestId: 101,
-      proposedPrice: "30",
-      estimatedDuration: "3h",
-      message: "Je peux récupérer votre véhicule dans 20 minutes. J'ai l'habitude des véhicules électriques.",
-      driverPhone: "+33 6 12 34 56 78",
-      status: 'pending',
-      receivedAt: "2024-06-24T10:45:00Z"
-    },
-    {
-      id: 2,
-      driverId: 202,
-      driverName: "Sophie L.",
-      driverRating: 4.9,
-      driverVehicle: "Peugeot 208",
-      originalRequestId: 101,
-      proposedPrice: "35",
-      estimatedDuration: "4h",
-      message: "Prix accepté ! Je suis disponible immédiatement et j'inclus un lavage gratuit.",
-      driverPhone: "+33 6 98 76 54 32",
-      status: 'pending',
-      receivedAt: "2024-06-24T10:50:00Z"
-    },
-    {
-      id: 3,
-      driverId: 203,
-      driverName: "Pierre M.",
-      driverRating: 4.7,
-      driverVehicle: "Citroën C3",
-      originalRequestId: 101,
-      proposedPrice: "40",
-      estimatedDuration: "3h30",
-      message: "Je propose un service premium avec lavage complet et vérification technique.",
-      driverPhone: "+33 6 11 22 33 44",
-      status: 'pending',
-      receivedAt: "2024-06-24T11:00:00Z"
+    
+    if (offers) {
+      setReceivedOffers(JSON.parse(offers));
     }
-  ];
+  }, []);
 
   const handleAcceptOffer = (offerId: number) => {
     const offer = receivedOffers.find(o => o.id === offerId);
@@ -135,7 +92,9 @@ const ClientOffers = () => {
   };
 
   const getOfferStatusColor = (offer: DriverOffer) => {
-    const originalPrice = parseInt(clientRequests.find(r => r.id === offer.originalRequestId)?.originalPrice || '0');
+    if (!clientRequest) return 'bg-gray-100 text-gray-700 border-gray-200';
+    
+    const originalPrice = parseInt(clientRequest.proposedPrice);
     const proposedPrice = parseInt(offer.proposedPrice);
     
     if (proposedPrice <= originalPrice) {
@@ -148,7 +107,9 @@ const ClientOffers = () => {
   };
 
   const getOfferStatusLabel = (offer: DriverOffer) => {
-    const originalPrice = parseInt(clientRequests.find(r => r.id === offer.originalRequestId)?.originalPrice || '0');
+    if (!clientRequest) return 'Prix proposé';
+    
+    const originalPrice = parseInt(clientRequest.proposedPrice);
     const proposedPrice = parseInt(offer.proposedPrice);
     
     if (proposedPrice <= originalPrice) {
@@ -165,6 +126,26 @@ const ClientOffers = () => {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Si aucune demande active, afficher un message
+  if (!clientRequest) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Mes Offres Reçues</h2>
+          <p className="text-muted-foreground">Aucune demande active</p>
+        </div>
+        
+        <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
+          <CardContent className="p-6 text-center">
+            <p className="text-electric-700">
+              Vous devez d'abord publier une demande pour recevoir des offres des chauffeurs.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -178,28 +159,26 @@ const ClientOffers = () => {
           <CardTitle className="text-electric-800">Ma demande active</CardTitle>
         </CardHeader>
         <CardContent>
-          {clientRequests.map((request) => (
-            <div key={request.id} className="space-y-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-electric-600" />
+              <span className="text-sm">{clientRequest.pickupAddress}</span>
+            </div>
+            {clientRequest.destinationAddress && (
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-electric-600" />
-                <span className="text-sm">{request.pickupAddress}</span>
+                <span className="text-sm">→ {clientRequest.destinationAddress}</span>
               </div>
-              {request.destinationAddress && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-electric-600" />
-                  <span className="text-sm">→ {request.destinationAddress}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Car className="h-4 w-4 text-electric-600" />
-                <span className="text-sm">{request.vehicleModel}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Euro className="h-4 w-4 text-electric-600" />
-                <span className="text-sm font-medium">Prix proposé: {request.originalPrice}€</span>
-              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Car className="h-4 w-4 text-electric-600" />
+              <span className="text-sm">{clientRequest.vehicleModel}</span>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <Euro className="h-4 w-4 text-electric-600" />
+              <span className="text-sm font-medium">Prix proposé: {clientRequest.proposedPrice}€</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -214,7 +193,7 @@ const ClientOffers = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-green-600">
-              {receivedOffers.filter(o => parseInt(o.proposedPrice) <= parseInt(clientRequests[0]?.originalPrice || '0')).length}
+              {receivedOffers.filter(o => parseInt(o.proposedPrice) <= parseInt(clientRequest.proposedPrice)).length}
             </div>
             <p className="text-xs text-muted-foreground">Au prix demandé</p>
           </CardContent>
@@ -222,7 +201,7 @@ const ClientOffers = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-yellow-600">
-              {Math.round(receivedOffers.reduce((acc, o) => acc + o.driverRating, 0) / receivedOffers.length * 10) / 10}
+              {receivedOffers.length > 0 ? Math.round(receivedOffers.reduce((acc, o) => acc + o.driverRating, 0) / receivedOffers.length * 10) / 10 : 0}
             </div>
             <p className="text-xs text-muted-foreground">Note moyenne</p>
           </CardContent>
@@ -233,98 +212,108 @@ const ClientOffers = () => {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">Offres des chauffeurs</h3>
         
-        {receivedOffers.map((offer) => (
-          <Card key={offer.id} className="hover:shadow-md transition-all duration-200">
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-medium text-foreground">{offer.driverName}</h4>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                        <span className="text-xs text-muted-foreground">{offer.driverRating}</span>
-                      </div>
-                      <Badge className={getOfferStatusColor(offer)}>
-                        {getOfferStatusLabel(offer)}
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Car className="h-3 w-3" />
-                        <span>{offer.driverVehicle}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Durée estimée: {offer.estimatedDuration}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        <span>{offer.driverPhone}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Reçu à {formatTime(offer.receivedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-electric-600">{offer.proposedPrice}€</div>
-                    <div className="text-xs text-muted-foreground">
-                      {parseInt(offer.proposedPrice) === parseInt(clientRequests[0]?.originalPrice || '0') ? 
-                        'Prix demandé' : 
-                        `${parseInt(offer.proposedPrice) > parseInt(clientRequests[0]?.originalPrice || '0') ? '+' : ''}${parseInt(offer.proposedPrice) - parseInt(clientRequests[0]?.originalPrice || '0')}€`
-                      }
-                    </div>
-                  </div>
-                </div>
-
-                {offer.message && (
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5" />
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">Message du chauffeur:</span>
-                        <p className="text-sm text-gray-600 mt-1">{offer.message}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm"
-                    onClick={() => handleAcceptOffer(offer.id)}
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Accepter
-                  </Button>
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openCounterOffer(offer)}
-                    className="border-electric-300 text-electric-700 hover:bg-electric-50"
-                  >
-                    <MessageSquare className="h-3 w-3 mr-1" />
-                    Négocier
-                  </Button>
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleRejectOffer(offer.id)}
-                    className="border-red-300 text-red-700 hover:bg-red-50"
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Refuser
-                  </Button>
-                </div>
-              </div>
+        {receivedOffers.length === 0 ? (
+          <Card className="bg-gray-50">
+            <CardContent className="p-6 text-center">
+              <p className="text-gray-600">
+                En attente des offres des chauffeurs... Les offres arrivent généralement dans les premières minutes.
+              </p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          receivedOffers.map((offer) => (
+            <Card key={offer.id} className="hover:shadow-md transition-all duration-200">
+              <CardContent className="p-4">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium text-foreground">{offer.driverName}</h4>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                          <span className="text-xs text-muted-foreground">{offer.driverRating}</span>
+                        </div>
+                        <Badge className={getOfferStatusColor(offer)}>
+                          {getOfferStatusLabel(offer)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Car className="h-3 w-3" />
+                          <span>{offer.driverVehicle}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Durée estimée: {offer.estimatedDuration}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          <span>{offer.driverPhone}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Reçu à {formatTime(offer.receivedAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-electric-600">{offer.proposedPrice}€</div>
+                      <div className="text-xs text-muted-foreground">
+                        {parseInt(offer.proposedPrice) === parseInt(clientRequest.proposedPrice) ? 
+                          'Prix demandé' : 
+                          `${parseInt(offer.proposedPrice) > parseInt(clientRequest.proposedPrice) ? '+' : ''}${parseInt(offer.proposedPrice) - parseInt(clientRequest.proposedPrice)}€`
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {offer.message && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Message du chauffeur:</span>
+                          <p className="text-sm text-gray-600 mt-1">{offer.message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm"
+                      onClick={() => handleAcceptOffer(offer.id)}
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Accepter
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openCounterOffer(offer)}
+                      className="border-electric-300 text-electric-700 hover:bg-electric-50"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Négocier
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRejectOffer(offer.id)}
+                      className="border-red-300 text-red-700 hover:bg-red-50"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Refuser
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Dialog pour contre-proposition */}

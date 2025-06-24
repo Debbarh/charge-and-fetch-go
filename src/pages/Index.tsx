@@ -9,6 +9,7 @@ import MapView from '@/components/MapView';
 import ValetService from '@/components/ValetService';
 import DriverService from '@/components/DriverService';
 import ClientOffers from '@/components/ClientOffers';
+import ClientRequestForm from '@/components/ClientRequestForm';
 import BookingModal from '@/components/BookingModal';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useChargingStations } from '@/hooks/useChargingStations';
@@ -16,7 +17,7 @@ import { formatDistance } from '@/utils/geoUtils';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('map');
-  const [clientTab, setClientTab] = useState<'services' | 'offers'>('services'); // Nouveau state pour les sous-onglets client
+  const [clientTab, setClientTab] = useState<'services' | 'offers'>('services');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -46,6 +47,11 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
+  // Fonction pour rediriger vers l'onglet offres après publication
+  const handleRequestPublished = () => {
+    setClientTab('offers');
+  };
+
   // Adapter les bornes pour l'affichage avec les vraies données
   const nearbyStations = stations.map(station => ({
     id: station.id,
@@ -54,7 +60,7 @@ const Index = () => {
     brand: station.nom_enseigne,
     address: station.adresse_station,
     distance: station.distance ? formatDistance(station.distance) : 'Distance inconnue',
-    available: Math.floor(Math.random() * station.nbre_pdc) + 1, // Simulation - à remplacer par données temps réel
+    available: Math.floor(Math.random() * station.nbre_pdc) + 1,
     total: station.nbre_pdc,
     price: station.gratuit ? 'Gratuit' : (station.tarification || 'Non spécifié'),
     power: station.puissance_nominale,
@@ -65,7 +71,7 @@ const Index = () => {
     ].filter(Boolean).join(', '),
     schedule: station.horaires,
     pmr: station.accessibilite_pmr,
-    realData: true // Indicateur que ce sont de vraies données
+    realData: true
   }));
 
   const valetServices = [
@@ -165,7 +171,6 @@ const Index = () => {
                       </div>
                     )}
 
-                    {/* Filtre par puissance */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-electric-700">Puissance de charge</label>
                       <ToggleGroup
@@ -186,7 +191,6 @@ const Index = () => {
                       </ToggleGroup>
                     </div>
 
-                    {/* Filtre par connecteur */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-electric-700">Type de connecteur</label>
                       <ToggleGroup
@@ -207,7 +211,6 @@ const Index = () => {
                       </ToggleGroup>
                     </div>
 
-                    {/* Filtre distance */}
                     {userLocation && (
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-electric-700">
@@ -228,7 +231,6 @@ const Index = () => {
                       </div>
                     )}
 
-                    {/* Filtre gratuit */}
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-electric-700">Bornes gratuites uniquement</label>
                       <Switch
@@ -394,7 +396,7 @@ const Index = () => {
 
             {/* Contenu conditionnel */}
             {clientTab === 'services' ? (
-              <ValetService services={valetServices} onBooking={() => setIsBookingOpen(true)} />
+              <ClientRequestForm onRequestPublished={handleRequestPublished} />
             ) : (
               <ClientOffers />
             )}
