@@ -1,5 +1,6 @@
+
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Zap, Navigation, Locate } from 'lucide-react';
+import { MapPin, Zap, Navigation, Locate, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChargingStations } from '../hooks/useChargingStations';
 import { useUserLocation } from '../hooks/useUserLocation';
@@ -9,7 +10,10 @@ const MapView = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const userLocationMarkerRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [selectedStation, setSelectedStation] = useState<any>(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   
   const { stations, isLoading, error } = useChargingStations();
   const { userLocation, isLocating, locationError } = useUserLocation();
@@ -63,6 +67,77 @@ const MapView = () => {
     };
   }, []);
 
+  // Function to get route from OSRM
+  const getRoute = async (start: [number, number], end: [number, number]) => {
+    try {
+      setIsLoadingRoute(true);
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`
+      );
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        return data.routes[0];
+      }
+      return null;
+    } catch (error) {
+      console.error('Erreur lors du calcul de l\'itinéraire:', error);
+      return null;
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  };
+
+  // Function to display route on map
+  const displayRoute = async (station: any) => {
+    if (!mapInstanceRef.current || !leafletLoaded || !userLocation) return;
+
+    const L = await import('leaflet');
+    
+    // Remove existing route
+    if (routeLayerRef.current) {
+      mapInstanceRef.current.removeLayer(routeLayerRef.current);
+    }
+
+    const route = await getRoute(
+      [userLocation.latitude, userLocation.longitude],
+      [station.lat, station.lng]
+    );
+
+    if (route && route.geometry) {
+      // Create route line
+      routeLayerRef.current = L.geoJSON(route.geometry, {
+        style: {
+          color: '#3B82F6',
+          weight: 4,
+          opacity: 0.8
+        }
+      }).addTo(mapInstanceRef.current);
+
+      // Fit map to show the route
+      mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), {
+        padding: [20, 20]
+      });
+
+      setSelectedStation(station);
+      console.log('Itinéraire affiché vers:', station.nom_station);
+    }
+  };
+
+  // Function to clear route
+  const clearRoute = async () => {
+    if (!mapInstanceRef.current || !routeLayerRef.current) return;
+
+    mapInstanceRef.current.removeLayer(routeLayerRef.current);
+    routeLayerRef.current = null;
+    setSelectedStation(null);
+    
+    // Return to user location view
+    if (userLocation) {
+      mapInstanceRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
+    }
+  };
+
   // Update user location marker when position changes
   useEffect(() => {
     const updateUserLocationMarker = async () => {
@@ -105,7 +180,9 @@ const MapView = () => {
         `);
       
       // Center the map on user location with appropriate zoom
-      mapInstanceRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
+      if (!selectedStation) {
+        mapInstanceRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
+      }
       
       console.log('Marqueur utilisateur ajouté à la position:', userLocation.latitude, userLocation.longitude);
     };
@@ -121,7 +198,8 @@ const MapView = () => {
       
       // Clear existing charging station markers (keep user location marker)
       mapInstanceRef.current.eachLayer((layer: any) => {
-        if (layer instanceof L.Marker && layer !== userLocationMarkerRef.current) {
+        if (layer instanceof L.Marker && 
+            layer !== userLocationMarkerRef.current) {
           mapInstanceRef.current.removeLayer(layer);
         }
       });
@@ -132,7 +210,7 @@ const MapView = () => {
                           station.puissance_nominale >= 22 ? 'bg-yellow-500' : 'bg-green-500';
         
         const chargingIcon = L.divIcon({
-          html: `<div class="w-6 h-6 ${powerColor} rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+          html: `<div class="w-6 h-6 ${powerColor} rounded-full flex items-center justify-center shadow-lg border-2 border-white cursor-pointer hover:scale-110 transition-transform">
                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
                      <path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03.03c5.03.5 8.97 4.76 8.97 9.97s-3.94 9.47-8.97 9.97V2.03z"/>
                    </svg>
@@ -149,44 +227,66 @@ const MapView = () => {
 
         const distanceText = station.distance ? ` • ${station.distance < 1 ? Math.round(station.distance * 1000) + ' m' : station.distance + ' km'}` : '';
 
-        L.marker([station.lat, station.lng], { icon: chargingIcon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(`
-            <div class="p-3 max-w-xs">
-              <h3 class="font-semibold text-sm mb-1">${station.nom_station}</h3>
-              <p class="text-xs text-gray-600 mb-1">
-                <strong>Opérateur:</strong> ${station.nom_operateur}
-              </p>
-              <p class="text-xs text-gray-600 mb-1">
-                <strong>Adresse:</strong> ${station.adresse_station}
-              </p>
-              ${station.distance ? `<p class="text-xs text-blue-600 mb-1">
-                <strong>Distance:</strong>${distanceText}
-              </p>` : ''}
-              <p class="text-xs text-gray-600 mb-1">
-                <strong>Puissance:</strong> ${station.puissance_nominale} kW
-              </p>
-              <p class="text-xs text-gray-600 mb-1">
-                <strong>Nombre de bornes:</strong> ${station.nbre_pdc}
-              </p>
-              ${priseTypes.length > 0 ? `<p class="text-xs text-gray-600 mb-1">
-                <strong>Types de prise:</strong> ${priseTypes.join(', ')}
-              </p>` : ''}
-              <p class="text-xs text-gray-600 mb-1">
-                <strong>Tarification:</strong> ${station.gratuit ? 'Gratuit' : station.tarification}
-              </p>
-              <p class="text-xs text-gray-600">
-                <strong>Horaires:</strong> ${station.horaires}
-              </p>
-            </div>
-          `);
+        const marker = L.marker([station.lat, station.lng], { icon: chargingIcon })
+          .addTo(mapInstanceRef.current);
+
+        // Add click event to show route
+        marker.on('click', () => {
+          if (userLocation) {
+            displayRoute(station);
+          } else {
+            alert('Position utilisateur non disponible pour calculer l\'itinéraire');
+          }
+        });
+
+        marker.bindPopup(`
+          <div class="p-3 max-w-xs">
+            <h3 class="font-semibold text-sm mb-1">${station.nom_station}</h3>
+            <p class="text-xs text-gray-600 mb-1">
+              <strong>Opérateur:</strong> ${station.nom_operateur}
+            </p>
+            <p class="text-xs text-gray-600 mb-1">
+              <strong>Adresse:</strong> ${station.adresse_station}
+            </p>
+            ${station.distance ? `<p class="text-xs text-blue-600 mb-1">
+              <strong>Distance:</strong>${distanceText}
+            </p>` : ''}
+            <p class="text-xs text-gray-600 mb-1">
+              <strong>Puissance:</strong> ${station.puissance_nominale} kW
+            </p>
+            <p class="text-xs text-gray-600 mb-1">
+              <strong>Nombre de bornes:</strong> ${station.nbre_pdc}
+            </p>
+            ${priseTypes.length > 0 ? `<p class="text-xs text-gray-600 mb-1">
+              <strong>Types de prise:</strong> ${priseTypes.join(', ')}
+            </p>` : ''}
+            <p class="text-xs text-gray-600 mb-1">
+              <strong>Tarification:</strong> ${station.gratuit ? 'Gratuit' : station.tarification}
+            </p>
+            <p class="text-xs text-gray-600 mb-2">
+              <strong>Horaires:</strong> ${station.horaires}
+            </p>
+            ${userLocation ? `<button onclick="window.showRoute && window.showRoute(${station.lat}, ${station.lng})" 
+              class="w-full bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors">
+              Voir l'itinéraire
+            </button>` : ''}
+          </div>
+        `);
       });
+
+      // Make displayRoute function available globally for popup buttons
+      (window as any).showRoute = (lat: number, lng: number) => {
+        const station = stations.find(s => s.lat === lat && s.lng === lng);
+        if (station) {
+          displayRoute(station);
+        }
+      };
 
       console.log(`${stations.length} bornes ajoutées à la carte`);
     };
 
     addStationsToMap();
-  }, [stations, leafletLoaded]);
+  }, [stations, leafletLoaded, userLocation]);
 
   const getCurrentLocation = async () => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
@@ -230,6 +330,21 @@ const MapView = () => {
         </div>
       )}
 
+      {isLoadingRoute && (
+        <div className="mb-4 p-3 bg-orange-100 border border-orange-400 text-orange-700 rounded">
+          Calcul de l'itinéraire en cours...
+        </div>
+      )}
+
+      {selectedStation && (
+        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
+          <span>Itinéraire vers: {selectedStation.nom_station}</span>
+          <Button size="sm" variant="ghost" onClick={clearRoute}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <div ref={mapRef} className="h-64 rounded-lg overflow-hidden border border-gray-200" />
 
       {/* Map controls */}
@@ -247,9 +362,16 @@ const MapView = () => {
             <Locate className="h-4 w-4" />
           )}
         </Button>
-        <Button size="sm" variant="secondary" className="bg-white/90 backdrop-blur-sm hover:bg-white">
-          <Navigation className="h-4 w-4" />
-        </Button>
+        {selectedStation && (
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            className="bg-white/90 backdrop-blur-sm hover:bg-white"
+            onClick={clearRoute}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Map legend */}
@@ -276,6 +398,7 @@ const MapView = () => {
         <div className="mt-2 text-center text-sm text-muted-foreground">
           {stations.length} bornes de recharge affichées
           {userLocation && ' • Position utilisateur détectée'}
+          {selectedStation && ' • Cliquez sur une borne pour voir l\'itinéraire'}
         </div>
       )}
     </div>
