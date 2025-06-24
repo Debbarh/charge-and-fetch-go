@@ -1,12 +1,227 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import MapView from '@/components/MapView';
+import ValetService from '@/components/ValetService';
+import BookingModal from '@/components/BookingModal';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState('map');
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+  const tabs = [
+    { id: 'map', label: 'Carte', icon: MapPin },
+    { id: 'valet', label: 'Valet', icon: Car },
+    { id: 'bookings', label: 'Réservations', icon: Clock },
+    { id: 'profile', label: 'Profil', icon: User },
+  ];
+
+  const nearbyStations = [
+    { id: 1, name: 'Station Tesla Supercharger', distance: '0.5 km', available: 4, total: 8, price: '0.35€/kWh' },
+    { id: 2, name: 'Ionity Paris Nord', distance: '1.2 km', available: 2, total: 6, price: '0.79€/kWh' },
+    { id: 3, name: 'ChargePoint Centre', distance: '2.1 km', available: 6, total: 10, price: '0.42€/kWh' },
+  ];
+
+  const valetServices = [
+    { id: 1, name: 'Express (2h)', price: '25€', rating: 4.8, description: 'Récupération rapide et recharge' },
+    { id: 2, name: 'Standard (4h)', price: '15€', rating: 4.9, description: 'Service standard avec lavage' },
+    { id: 3, name: 'Nuit (8h+)', price: '35€', rating: 4.7, description: 'Récupération le soir, livraison le matin' },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'map':
+        return (
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher une borne de recharge..."
+                className="pl-10 bg-white/80 backdrop-blur-sm"
+              />
+            </div>
+            
+            <MapView />
+            
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground">Bornes à proximité</h3>
+              {nearbyStations.map((station) => (
+                <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-foreground">{station.name}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">{station.distance} • {station.price}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1">
+                          <Zap className="h-4 w-4 text-electric-500" />
+                          <span className="text-sm font-medium text-electric-600">
+                            {station.available}/{station.total}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">disponibles</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'valet':
+        return <ValetService services={valetServices} onBooking={() => setIsBookingOpen(true)} />;
+
+      case 'bookings':
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground">Mes Réservations</h2>
+            <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-electric-800">Valet Express en cours</h3>
+                    <p className="text-electric-600 text-sm mt-1">Récupération prévue dans 15 min</p>
+                  </div>
+                  <div className="animate-pulse-slow">
+                    <Car className="h-8 w-8 text-electric-500" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Aucune autre réservation</p>
+            </div>
+          </div>
+        );
+
+      case 'profile':
+        return (
+          <div className="space-y-6">
+            <Card className="bg-gradient-to-r from-blue-50 to-electric-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-electric-400 to-blue-400 rounded-full flex items-center justify-center">
+                    <User className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Jean Dupont</h3>
+                    <p className="text-muted-foreground">jean.dupont@email.com</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <span className="text-sm text-muted-foreground">4.9 (23 services)</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground">Mon véhicule</h3>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Tesla Model 3</h4>
+                      <p className="text-sm text-muted-foreground">AB-123-CD</p>
+                    </div>
+                    <Zap className="h-6 w-6 text-electric-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground">Statistiques</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-electric-600">1,247</div>
+                    <p className="text-sm text-muted-foreground">kWh rechargés</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-600">23</div>
+                    <p className="text-sm text-muted-foreground">Services valet</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-electric-50 via-white to-blue-50">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-electric-100 sticky top-0 z-40">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-electric-600 to-blue-600 bg-clip-text text-transparent">
+                ElectricValet
+              </h1>
+              <p className="text-sm text-muted-foreground">Recharge intelligente</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-electric-200 text-electric-600 hover:bg-electric-50"
+              onClick={() => setIsBookingOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Réserver
+            </Button>
+          </div>
+        </div>
       </div>
+
+      {/* Content */}
+      <div className="px-4 py-4 pb-20">
+        {renderContent()}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-electric-100 z-50">
+        <div className="grid grid-cols-4 gap-1 p-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <Button
+                key={tab.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center gap-1 h-16 hover:bg-electric-50 transition-all duration-200 ${
+                  isActive 
+                    ? 'text-electric-600 bg-electric-50 scale-105' 
+                    : 'text-muted-foreground hover:text-electric-600'
+                }`}
+              >
+                <Icon className={`h-5 w-5 transition-transform duration-200 ${isActive ? 'animate-bounce-soft' : ''}`} />
+                <span className="text-xs font-medium">{tab.label}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <BookingModal 
+        isOpen={isBookingOpen} 
+        onClose={() => setIsBookingOpen(false)} 
+        services={valetServices}
+      />
     </div>
   );
 };
