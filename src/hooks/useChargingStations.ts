@@ -20,22 +20,38 @@ export const useChargingStations = (userLocation?: UserLocation | null, filters?
     const loadStations = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        
+        console.log('Tentative de chargement du fichier GeoJSON...');
         
         // Load the GeoJSON file from the public directory
         const response = await fetch('/test.geojson');
+        
+        console.log('Réponse fetch:', response.status, response.statusText);
+        
         if (!response.ok) {
-          throw new Error('Impossible de charger les données des bornes');
+          if (response.status === 404) {
+            throw new Error('Le fichier test.geojson est introuvable dans le dossier public/. Veuillez vérifier que le fichier existe.');
+          }
+          throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
         }
         
         const geoJsonContent = await response.text();
+        console.log('Contenu GeoJSON chargé, taille:', geoJsonContent.length, 'caractères');
+        
         const parsedStations = parseChargingStationsGeoJSON(geoJsonContent);
         
         console.log(`${parsedStations.length} bornes chargées depuis le GeoJSON`);
         setAllStations(parsedStations);
-        setError(null);
+        
+        if (parsedStations.length === 0) {
+          setError('Le fichier GeoJSON ne contient aucune borne valide');
+        }
+        
       } catch (err) {
         console.error('Erreur lors du chargement des bornes:', err);
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
+        const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue lors du chargement';
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }

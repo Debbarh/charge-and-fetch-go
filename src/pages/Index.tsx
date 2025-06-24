@@ -248,16 +248,32 @@ const Index = () => {
 
               {stationsError && (
                 <Card className="bg-red-50 border-red-200">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-red-600">Erreur: {stationsError}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.reload()}
-                      className="mt-2"
-                    >
-                      Réessayer
-                    </Button>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <X className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-red-800 mb-1">Erreur de chargement des données</h4>
+                        <p className="text-red-600 text-sm mb-3">{stationsError}</p>
+                        <div className="space-y-2">
+                          <p className="text-red-700 text-sm font-medium">Solutions possibles :</p>
+                          <ul className="text-red-600 text-sm space-y-1 ml-4">
+                            <li>• Vérifiez que le fichier <code className="bg-red-100 px-1 rounded">test.geojson</code> existe dans le dossier <code className="bg-red-100 px-1 rounded">public/</code></li>
+                            <li>• Vérifiez que le fichier GeoJSON est valide</li>
+                            <li>• Rechargez la page pour réessayer</li>
+                          </ul>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.reload()}
+                          className="mt-3 border-red-300 text-red-700 hover:bg-red-50"
+                        >
+                          Recharger la page
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}
