@@ -1,7 +1,7 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Zap, Navigation, Locate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useChargingStations } from '../hooks/useChargingStations';
 
 // Dynamically import leaflet to avoid SSR issues
 const MapView = () => {
@@ -10,12 +10,8 @@ const MapView = () => {
   const userLocationMarkerRef = useRef<any>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
-
-  const chargingStations = [
-    { id: 1, lat: 48.8566, lng: 2.3522, name: 'Tesla Supercharger', available: 4, total: 8 },
-    { id: 2, lat: 48.8606, lng: 2.3376, name: 'Ionity', available: 2, total: 6 },
-    { id: 3, lat: 48.8534, lng: 2.3488, name: 'ChargePoint', available: 6, total: 10 },
-  ];
+  
+  const { stations, isLoading, error } = useChargingStations();
 
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -45,37 +41,14 @@ const MapView = () => {
       const L = await loadLeaflet();
       if (!L) return;
 
-      // Initialize the map
-      const map = L.map(mapRef.current).setView([48.8566, 2.3522], 13);
+      // Initialize the map centered on France
+      const map = L.map(mapRef.current).setView([46.6034, 1.8883], 6);
       mapInstanceRef.current = map;
 
       // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(map);
-
-      // Add charging station markers
-      chargingStations.forEach((station) => {
-        const chargingIcon = L.divIcon({
-          html: `<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                   <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                     <path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03.03c5.03.5 8.97 4.76 8.97 9.97s-3.94 9.47-8.97 9.97V2.03z"/>
-                   </svg>
-                 </div>`,
-          className: 'charging-station-marker',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
-        });
-
-        L.marker([station.lat, station.lng], { icon: chargingIcon })
-          .addTo(map)
-          .bindPopup(`
-            <div class="p-2">
-              <h3 class="font-semibold">${station.name}</h3>
-              <p class="text-sm text-gray-600">${station.available}/${station.total} bornes disponibles</p>
-            </div>
-          `);
-      });
     };
 
     initializeMap();
@@ -88,6 +61,76 @@ const MapView = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const addStationsToMap = async () => {
+      if (!mapInstanceRef.current || !leafletLoaded || !stations.length) return;
+
+      const L = await import('leaflet');
+      
+      // Clear existing markers (if any)
+      mapInstanceRef.current.eachLayer((layer: any) => {
+        if (layer instanceof L.Marker && layer !== userLocationMarkerRef.current) {
+          mapInstanceRef.current.removeLayer(layer);
+        }
+      });
+
+      // Add charging station markers
+      stations.forEach((station) => {
+        const powerColor = station.puissance_nominale >= 50 ? 'bg-red-500' : 
+                          station.puissance_nominale >= 22 ? 'bg-yellow-500' : 'bg-green-500';
+        
+        const chargingIcon = L.divIcon({
+          html: `<div class="w-6 h-6 ${powerColor} rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                   <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                     <path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03.03c5.03.5 8.97 4.76 8.97 9.97s-3.94 9.47-8.97 9.97V2.03z"/>
+                   </svg>
+                 </div>`,
+          className: 'charging-station-marker',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const priseTypes = [];
+        if (station.prise_type_2) priseTypes.push('Type 2');
+        if (station.prise_type_combo_ccs) priseTypes.push('CCS');
+        if (station.prise_type_chademo) priseTypes.push('CHAdeMO');
+
+        L.marker([station.lat, station.lng], { icon: chargingIcon })
+          .addTo(mapInstanceRef.current)
+          .bindPopup(`
+            <div class="p-3 max-w-xs">
+              <h3 class="font-semibold text-sm mb-1">${station.nom_station}</h3>
+              <p class="text-xs text-gray-600 mb-1">
+                <strong>Opérateur:</strong> ${station.nom_operateur}
+              </p>
+              <p class="text-xs text-gray-600 mb-1">
+                <strong>Adresse:</strong> ${station.adresse_station}
+              </p>
+              <p class="text-xs text-gray-600 mb-1">
+                <strong>Puissance:</strong> ${station.puissance_nominale} kW
+              </p>
+              <p class="text-xs text-gray-600 mb-1">
+                <strong>Nombre de bornes:</strong> ${station.nbre_pdc}
+              </p>
+              ${priseTypes.length > 0 ? `<p class="text-xs text-gray-600 mb-1">
+                <strong>Types de prise:</strong> ${priseTypes.join(', ')}
+              </p>` : ''}
+              <p class="text-xs text-gray-600 mb-1">
+                <strong>Tarification:</strong> ${station.gratuit ? 'Gratuit' : station.tarification}
+              </p>
+              <p class="text-xs text-gray-600">
+                <strong>Horaires:</strong> ${station.horaires}
+              </p>
+            </div>
+          `);
+      });
+
+      console.log(`${stations.length} bornes ajoutées à la carte`);
+    };
+
+    addStationsToMap();
+  }, [stations, leafletLoaded]);
 
   const getCurrentLocation = async () => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
@@ -147,6 +190,18 @@ const MapView = () => {
 
   return (
     <div className="relative">
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          Erreur: {error}
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded">
+          Chargement des bornes de recharge...
+        </div>
+      )}
+
       <div ref={mapRef} className="h-64 rounded-lg overflow-hidden border border-gray-200" />
 
       {/* Map controls */}
@@ -173,13 +228,27 @@ const MapView = () => {
       <div className="mt-4 flex items-center justify-center gap-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span className="text-muted-foreground">Bornes disponibles</span>
+          <span className="text-muted-foreground">≤ 22kW</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          <span className="text-muted-foreground">22-50kW</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+          <span className="text-muted-foreground">≥ 50kW</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
           <span className="text-muted-foreground">Votre position</span>
         </div>
       </div>
+      
+      {stations.length > 0 && (
+        <div className="mt-2 text-center text-sm text-muted-foreground">
+          {stations.length} bornes de recharge affichées
+        </div>
+      )}
     </div>
   );
 };
