@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -151,11 +152,11 @@ const DriverService = () => {
       driverRating: 4.9,
       driverTotalRides: 127,
       driverVehicle: 'Peugeot 208',
-      driverExperience: '5 ans d\'expérience',
+      driverExperience: "5 ans d'expérience",
       originalRequestId: requestId,
       proposedPrice: request.proposedPrice,
       estimatedDuration: request.estimatedDuration,
-      message: 'J\'accepte votre demande aux conditions proposées !',
+      message: "J'accepte votre demande aux conditions proposées !",
       driverPhone: '+33 6 12 34 56 78',
       status: 'pending',
       receivedAt: new Date().toISOString(),
@@ -215,7 +216,7 @@ const DriverService = () => {
       driverRating: 4.9,
       driverTotalRides: 127,
       driverVehicle: 'Peugeot 208',
-      driverExperience: '5 ans d\'expérience',
+      driverExperience: "5 ans d'expérience",
       originalRequestId: counterOffer.requestId,
       proposedPrice: counterOffer.newPrice,
       estimatedDuration: counterOffer.newDuration || request.estimatedDuration,
@@ -298,7 +299,7 @@ const DriverService = () => {
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>Répond en < 5 min</span>
+                  <span>Répond en &lt; 5 min</span>
                 </div>
               </div>
               <div className="flex gap-1 mt-2">
