@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
