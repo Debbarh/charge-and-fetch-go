@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp } from 'lucide-react';
+import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, Edit3, MessageSquare, Award, TrendingUp, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import NearbyChargersDrivers from './NearbyChargersDrivers';
 
 interface DriverRequest {
   id: number;
@@ -52,7 +53,7 @@ interface DriverProfile {
 
 const DriverService = () => {
   const [isDriver, setIsDriver] = useState(false);
-  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers'>('available');
+  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network'>('available');
   const [driverProfile, setDriverProfile] = useState<DriverProfile>({
     name: '',
     phone: '',
@@ -497,6 +498,17 @@ const DriverService = () => {
         >
           Mes Offres ({myOffers.length})
         </button>
+        <button
+          onClick={() => setActiveTab('network')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'network'
+              ? 'bg-white text-electric-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Users className="h-4 w-4 inline mr-1" />
+          Réseau
+        </button>
       </div>
 
       {/* Standard Requests */}
@@ -685,6 +697,11 @@ const DriverService = () => {
             ))
           )}
         </div>
+      )}
+
+      {/* New Network Tab */}
+      {activeTab === 'network' && (
+        <NearbyChargersDrivers />
       )}
 
       {/* Counter Offer Dialog */}
