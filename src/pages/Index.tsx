@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Switch } from '@/components/ui/switch';
 import MapView from '@/components/MapView';
 import ValetService from '@/components/ValetService';
 import DriverService from '@/components/DriverService';
@@ -14,12 +16,67 @@ import { formatDistance } from '@/utils/geoUtils';
 const Index = () => {
   const [activeTab, setActiveTab] = useState('map');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // États des filtres
+  const [powerFilter, setPowerFilter] = useState<string[]>([]);
+  const [connectorFilter, setConnectorFilter] = useState<string[]>([]);
+  const [freeOnly, setFreeOnly] = useState(false);
+  const [maxDistance, setMaxDistance] = useState<number>(50);
   
   // Géolocalisation de l'utilisateur
   const { userLocation, isLocating, locationError, getCurrentLocation } = useUserLocation();
   
   // Bornes avec distances calculées
   const { stations, isLoading: stationsLoading, error: stationsError } = useChargingStations(userLocation);
+
+  // Filtrer les bornes selon les critères
+  const filteredStations = useMemo(() => {
+    let filtered = stations;
+
+    // Filtre par distance maximale
+    if (userLocation && maxDistance > 0) {
+      filtered = filtered.filter(station => 
+        !station.distance || station.distance <= maxDistance
+      );
+    }
+
+    // Filtre par puissance
+    if (powerFilter.length > 0) {
+      filtered = filtered.filter(station => {
+        const power = station.puissance_nominale;
+        return powerFilter.some(filter => {
+          switch(filter) {
+            case 'slow': return power <= 22;
+            case 'fast': return power > 22 && power < 50;
+            case 'rapid': return power >= 50;
+            default: return true;
+          }
+        });
+      });
+    }
+
+    // Filtre par type de connecteur
+    if (connectorFilter.length > 0) {
+      filtered = filtered.filter(station => {
+        return connectorFilter.some(connector => {
+          switch(connector) {
+            case 'type2': return station.prise_type_2;
+            case 'ccs': return station.prise_type_combo_ccs;
+            case 'chademo': return station.prise_type_chademo;
+            default: return true;
+          }
+        });
+      });
+    }
+
+    // Filtre gratuit uniquement
+    if (freeOnly) {
+      filtered = filtered.filter(station => station.gratuit);
+    }
+
+    return filtered.slice(0, 10); // Limiter à 10 résultats
+  }, [stations, powerFilter, connectorFilter, freeOnly, maxDistance, userLocation]);
 
   const tabs = [
     { id: 'map', label: 'Carte', icon: MapPin },
@@ -29,14 +86,21 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
-  // Prendre les 3 bornes les plus proches
-  const nearbyStations = stations.slice(0, 3).map(station => ({
+  // Adapter les bornes pour l'affichage
+  const nearbyStations = filteredStations.map(station => ({
     id: station.id,
     name: station.nom_station,
+    operator: station.nom_operateur,
     distance: station.distance ? formatDistance(station.distance) : 'Distance inconnue',
     available: Math.floor(Math.random() * station.nbre_pdc) + 1, // Simulation
     total: station.nbre_pdc,
-    price: station.gratuit ? 'Gratuit' : station.tarification
+    price: station.gratuit ? 'Gratuit' : station.tarification,
+    power: station.puissance_nominale,
+    connectors: [
+      station.prise_type_2 && 'Type 2',
+      station.prise_type_combo_ccs && 'CCS',
+      station.prise_type_chademo && 'CHAdeMO'
+    ].filter(Boolean).join(', ')
   }));
 
   const valetServices = [
@@ -44,6 +108,13 @@ const Index = () => {
     { id: 2, name: 'Standard (4h)', price: '15€', rating: 4.9, description: 'Service standard avec lavage' },
     { id: 3, name: 'Nuit (8h+)', price: '35€', rating: 4.7, description: 'Récupération le soir, livraison le matin' },
   ];
+
+  const clearAllFilters = () => {
+    setPowerFilter([]);
+    setConnectorFilter([]);
+    setFreeOnly(false);
+    setMaxDistance(50);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -81,42 +152,182 @@ const Index = () => {
             <MapView />
             
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-foreground">
-                Bornes à proximité
-                {userLocation && (
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">
+                  Bornes à proximité
                   <span className="text-sm font-normal text-muted-foreground ml-2">
-                    (triées par distance)
+                    ({filteredStations.length} résultats)
                   </span>
-                )}
-              </h3>
-              {nearbyStations.length > 0 ? (
-                nearbyStations.map((station) => (
-                  <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-foreground">{station.name}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{station.distance} • {station.price}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1">
-                            <Zap className="h-4 w-4 text-electric-500" />
-                            <span className="text-sm font-medium text-electric-600">
-                              {station.available}/{station.total}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">disponibles</p>
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filtres
+                  {(powerFilter.length > 0 || connectorFilter.length > 0 || freeOnly) && (
+                    <span className="bg-electric-500 text-white text-xs px-2 py-1 rounded-full">
+                      {powerFilter.length + connectorFilter.length + (freeOnly ? 1 : 0)}
+                    </span>
+                  )}
+                </Button>
+              </div>
+
+              {showFilters && (
+                <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-electric-800">Filtres de recherche</h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearAllFilters}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Effacer tout
+                      </Button>
+                    </div>
+
+                    {/* Filtre par puissance */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-electric-700">Puissance de charge</label>
+                      <ToggleGroup
+                        type="multiple"
+                        value={powerFilter}
+                        onValueChange={setPowerFilter}
+                        className="justify-start flex-wrap"
+                      >
+                        <ToggleGroupItem value="slow" variant="outline" size="sm">
+                          ≤ 22kW (Lente)
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="fast" variant="outline" size="sm">
+                          22-50kW (Rapide)
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="rapid" variant="outline" size="sm">
+                          ≥ 50kW (Ultra-rapide)
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+
+                    {/* Filtre par connecteur */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-electric-700">Type de connecteur</label>
+                      <ToggleGroup
+                        type="multiple"
+                        value={connectorFilter}
+                        onValueChange={setConnectorFilter}
+                        className="justify-start flex-wrap"
+                      >
+                        <ToggleGroupItem value="type2" variant="outline" size="sm">
+                          Type 2
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="ccs" variant="outline" size="sm">
+                          CCS
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="chademo" variant="outline" size="sm">
+                          CHAdeMO
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+
+                    {/* Filtre distance */}
+                    {userLocation && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-electric-700">
+                          Distance maximale: {maxDistance} km
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="100"
+                          value={maxDistance}
+                          onChange={(e) => setMaxDistance(Number(e.target.value))}
+                          className="w-full h-2 bg-electric-200 rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        <div className="flex justify-between text-xs text-electric-600">
+                          <span>1 km</span>
+                          <span>100 km</span>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
+                    )}
+
+                    {/* Filtre gratuit */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-electric-700">Bornes gratuites uniquement</label>
+                      <Switch
+                        checked={freeOnly}
+                        onCheckedChange={setFreeOnly}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {nearbyStations.length > 0 ? (
+                <div className="space-y-3">
+                  {nearbyStations.map((station) => (
+                    <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-foreground">{station.name}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {station.operator}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {station.distance} • {station.price}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                station.power >= 50 ? 'bg-red-100 text-red-700' :
+                                station.power >= 22 ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {station.power} kW
+                              </span>
+                              {station.connectors && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                  {station.connectors}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1">
+                              <Zap className="h-4 w-4 text-electric-500" />
+                              <span className="text-sm font-medium text-electric-600">
+                                {station.available}/{station.total}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">disponibles</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : (
                 <Card className="bg-white/90 backdrop-blur-sm">
                   <CardContent className="p-4 text-center">
                     <p className="text-muted-foreground">
-                      {stationsLoading ? 'Chargement des bornes...' : 'Aucune borne trouvée'}
+                      {stationsLoading ? 'Chargement des bornes...' : 
+                       filteredStations.length === 0 && stations.length > 0 ? 
+                       'Aucune borne ne correspond aux filtres sélectionnés' :
+                       'Aucune borne trouvée'}
                     </p>
+                    {filteredStations.length === 0 && stations.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearAllFilters}
+                        className="mt-2"
+                      >
+                        Effacer les filtres
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
