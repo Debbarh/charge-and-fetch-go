@@ -2,16 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Zap, Navigation, Locate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChargingStations } from '../hooks/useChargingStations';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 // Dynamically import leaflet to avoid SSR issues
 const MapView = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const userLocationMarkerRef = useRef<any>(null);
-  const [isLocating, setIsLocating] = useState(false);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   
   const { stations, isLoading, error } = useChargingStations();
+  const { userLocation, isLocating, locationError } = useUserLocation();
 
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -62,13 +63,63 @@ const MapView = () => {
     };
   }, []);
 
+  // Update user location marker when position changes
+  useEffect(() => {
+    const updateUserLocationMarker = async () => {
+      if (!mapInstanceRef.current || !leafletLoaded || !userLocation) return;
+
+      const L = await import('leaflet');
+      
+      // Remove existing user location marker
+      if (userLocationMarkerRef.current) {
+        mapInstanceRef.current.removeLayer(userLocationMarkerRef.current);
+      }
+      
+      // Create user location marker with distinctive styling
+      const userIcon = L.divIcon({
+        html: `<div class="relative w-6 h-6">
+                 <div class="absolute inset-0 bg-blue-500 rounded-full border-3 border-white shadow-lg animate-pulse"></div>
+                 <div class="absolute inset-1 bg-blue-600 rounded-full"></div>
+                 <div class="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-30"></div>
+               </div>`,
+        className: 'user-location-marker',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      
+      userLocationMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], { 
+        icon: userIcon,
+        zIndexOffset: 1000 // Make sure user marker is on top
+      })
+        .addTo(mapInstanceRef.current)
+        .bindPopup(`
+          <div class="p-2">
+            <h3 class="font-semibold text-sm mb-1">Votre position</h3>
+            <p class="text-xs text-gray-600">
+              <strong>Latitude:</strong> ${userLocation.latitude.toFixed(6)}
+            </p>
+            <p class="text-xs text-gray-600">
+              <strong>Longitude:</strong> ${userLocation.longitude.toFixed(6)}
+            </p>
+          </div>
+        `);
+      
+      // Center the map on user location with appropriate zoom
+      mapInstanceRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
+      
+      console.log('Marqueur utilisateur ajouté à la position:', userLocation.latitude, userLocation.longitude);
+    };
+
+    updateUserLocationMarker();
+  }, [userLocation, leafletLoaded]);
+
   useEffect(() => {
     const addStationsToMap = async () => {
       if (!mapInstanceRef.current || !leafletLoaded || !stations.length) return;
 
       const L = await import('leaflet');
       
-      // Clear existing markers (if any)
+      // Clear existing charging station markers (keep user location marker)
       mapInstanceRef.current.eachLayer((layer: any) => {
         if (layer instanceof L.Marker && layer !== userLocationMarkerRef.current) {
           mapInstanceRef.current.removeLayer(layer);
@@ -96,6 +147,8 @@ const MapView = () => {
         if (station.prise_type_combo_ccs) priseTypes.push('CCS');
         if (station.prise_type_chademo) priseTypes.push('CHAdeMO');
 
+        const distanceText = station.distance ? ` • ${station.distance < 1 ? Math.round(station.distance * 1000) + ' m' : station.distance + ' km'}` : '';
+
         L.marker([station.lat, station.lng], { icon: chargingIcon })
           .addTo(mapInstanceRef.current)
           .bindPopup(`
@@ -107,6 +160,9 @@ const MapView = () => {
               <p class="text-xs text-gray-600 mb-1">
                 <strong>Adresse:</strong> ${station.adresse_station}
               </p>
+              ${station.distance ? `<p class="text-xs text-blue-600 mb-1">
+                <strong>Distance:</strong>${distanceText}
+              </p>` : ''}
               <p class="text-xs text-gray-600 mb-1">
                 <strong>Puissance:</strong> ${station.puissance_nominale} kW
               </p>
@@ -135,8 +191,6 @@ const MapView = () => {
   const getCurrentLocation = async () => {
     if (!mapInstanceRef.current || !leafletLoaded) return;
     
-    setIsLocating(true);
-    
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -145,35 +199,10 @@ const MapView = () => {
           if (mapInstanceRef.current) {
             // Center map on user location
             mapInstanceRef.current.setView([latitude, longitude], 15);
-            
-            // Remove existing user location marker
-            if (userLocationMarkerRef.current) {
-              mapInstanceRef.current.removeLayer(userLocationMarkerRef.current);
-            }
-            
-            // Dynamically import leaflet for user location marker
-            const L = await import('leaflet');
-            
-            // Create user location marker
-            const userIcon = L.divIcon({
-              html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse">
-                       <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping"></div>
-                     </div>`,
-              className: 'user-location-marker',
-              iconSize: [16, 16],
-              iconAnchor: [8, 8]
-            });
-            
-            userLocationMarkerRef.current = L.marker([latitude, longitude], { icon: userIcon })
-              .addTo(mapInstanceRef.current)
-              .bindPopup('Votre position actuelle');
           }
-          
-          setIsLocating(false);
         },
         (error) => {
           console.error('Erreur de géolocalisation:', error);
-          setIsLocating(false);
           alert('Impossible d\'obtenir votre position. Vérifiez que la géolocalisation est activée.');
         },
         {
@@ -183,7 +212,6 @@ const MapView = () => {
         }
       );
     } else {
-      setIsLocating(false);
       alert('La géolocalisation n\'est pas supportée par votre navigateur.');
     }
   };
@@ -239,7 +267,7 @@ const MapView = () => {
           <span className="text-muted-foreground">≥ 50kW</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
           <span className="text-muted-foreground">Votre position</span>
         </div>
       </div>
@@ -247,6 +275,7 @@ const MapView = () => {
       {stations.length > 0 && (
         <div className="mt-2 text-center text-sm text-muted-foreground">
           {stations.length} bornes de recharge affichées
+          {userLocation && ' • Position utilisateur détectée'}
         </div>
       )}
     </div>
