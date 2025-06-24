@@ -7,10 +7,19 @@ import MapView from '@/components/MapView';
 import ValetService from '@/components/ValetService';
 import DriverService from '@/components/DriverService';
 import BookingModal from '@/components/BookingModal';
+import { useUserLocation } from '@/hooks/useUserLocation';
+import { useChargingStations } from '@/hooks/useChargingStations';
+import { formatDistance } from '@/utils/geoUtils';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('map');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  
+  // Géolocalisation de l'utilisateur
+  const { userLocation, isLocating, locationError, getCurrentLocation } = useUserLocation();
+  
+  // Bornes avec distances calculées
+  const { stations, isLoading: stationsLoading, error: stationsError } = useChargingStations(userLocation);
 
   const tabs = [
     { id: 'map', label: 'Carte', icon: MapPin },
@@ -20,11 +29,15 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
-  const nearbyStations = [
-    { id: 1, name: 'Station Tesla Supercharger', distance: '0.5 km', available: 4, total: 8, price: '0.35€/kWh' },
-    { id: 2, name: 'Ionity Paris Nord', distance: '1.2 km', available: 2, total: 6, price: '0.79€/kWh' },
-    { id: 3, name: 'ChargePoint Centre', distance: '2.1 km', available: 6, total: 10, price: '0.42€/kWh' },
-  ];
+  // Prendre les 3 bornes les plus proches
+  const nearbyStations = stations.slice(0, 3).map(station => ({
+    id: station.id,
+    name: station.nom_station,
+    distance: station.distance ? formatDistance(station.distance) : 'Distance inconnue',
+    available: Math.floor(Math.random() * station.nbre_pdc) + 1, // Simulation
+    total: station.nbre_pdc,
+    price: station.gratuit ? 'Gratuit' : station.tarification
+  }));
 
   const valetServices = [
     { id: 1, name: 'Express (2h)', price: '25€', rating: 4.8, description: 'Récupération rapide et recharge' },
@@ -37,6 +50,26 @@ const Index = () => {
       case 'map':
         return (
           <div className="space-y-4">
+            {locationError && (
+              <div className="mb-4 p-3 bg-orange-100 border border-orange-400 text-orange-700 rounded">
+                {locationError}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2"
+                  onClick={getCurrentLocation}
+                >
+                  Réessayer
+                </Button>
+              </div>
+            )}
+            
+            {isLocating && (
+              <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded">
+                Localisation en cours...
+              </div>
+            )}
+            
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -48,28 +81,45 @@ const Index = () => {
             <MapView />
             
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-foreground">Bornes à proximité</h3>
-              {nearbyStations.map((station) => (
-                <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-foreground">{station.name}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{station.distance} • {station.price}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          <Zap className="h-4 w-4 text-electric-500" />
-                          <span className="text-sm font-medium text-electric-600">
-                            {station.available}/{station.total}
-                          </span>
+              <h3 className="text-lg font-semibold text-foreground">
+                Bornes à proximité
+                {userLocation && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    (triées par distance)
+                  </span>
+                )}
+              </h3>
+              {nearbyStations.length > 0 ? (
+                nearbyStations.map((station) => (
+                  <Card key={station.id} className="bg-white/90 backdrop-blur-sm hover:bg-white/95 transition-all duration-200 hover:scale-[1.02]">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground">{station.name}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{station.distance} • {station.price}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">disponibles</p>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1">
+                            <Zap className="h-4 w-4 text-electric-500" />
+                            <span className="text-sm font-medium text-electric-600">
+                              {station.available}/{station.total}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">disponibles</p>
+                        </div>
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="bg-white/90 backdrop-blur-sm">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-muted-foreground">
+                      {stationsLoading ? 'Chargement des bornes...' : 'Aucune borne trouvée'}
+                    </p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
           </div>
         );

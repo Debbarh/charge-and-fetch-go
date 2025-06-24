@@ -16,6 +16,7 @@ export interface ChargingStationData {
   horaires: string;
   accessibilite_pmr: string;
   nbre_pdc: number;
+  distance?: number; // Distance en kilomètres depuis la position de l'utilisateur
 }
 
 export const parseChargingStationsGeoJSON = (geoJsonContent: string): ChargingStationData[] => {
