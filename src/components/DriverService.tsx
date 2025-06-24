@@ -114,7 +114,6 @@ const DriverService = () => {
           <p className="text-muted-foreground">Gagnez de l'argent en aidant les propriétaires de véhicules électriques</p>
         </div>
 
-        {/* Benefits */}
         <Card className="bg-gradient-to-r from-blue-50 to-electric-50 border-blue-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-blue-800 mb-4">Pourquoi devenir chauffeur-valet ?</h3>
@@ -140,10 +139,9 @@ const DriverService = () => {
                 <p className="text-xs text-blue-600">Assurance incluse</p>
               </div>
             </div>
-          </Card>
+          </CardContent>
         </Card>
 
-        {/* Registration form */}
         <Card>
           <CardHeader>
             <CardTitle>Inscription Chauffeur</CardTitle>
@@ -229,7 +227,6 @@ const DriverService = () => {
         <p className="text-muted-foreground">Choisissez les services qui vous conviennent</p>
       </div>
 
-      {/* Driver stats */}
       <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -245,7 +242,6 @@ const DriverService = () => {
         </CardContent>
       </Card>
 
-      {/* Available requests */}
       <div className="space-y-4">
         {availableRequests.map((request) => (
           <Card key={request.id} className="hover:shadow-md transition-all duration-200">
@@ -295,7 +291,6 @@ const DriverService = () => {
         ))}
       </div>
 
-      {/* Quick stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
