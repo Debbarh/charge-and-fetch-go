@@ -240,16 +240,57 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           availability_schedule: Json | null
           bio: string | null
           created_at: string | null
+          email_notifications: boolean | null
           experience_years: number | null
           full_name: string | null
           hourly_rate: number | null
           id: string
+          notification_negotiations: boolean | null
+          notification_new_offers: boolean | null
+          notification_status_changes: boolean | null
           phone: string | null
+          push_notifications: boolean | null
           specialties: string[] | null
           updated_at: string | null
           vehicle_color: string | null
@@ -263,11 +304,16 @@ export type Database = {
           availability_schedule?: Json | null
           bio?: string | null
           created_at?: string | null
+          email_notifications?: boolean | null
           experience_years?: number | null
           full_name?: string | null
           hourly_rate?: number | null
           id: string
+          notification_negotiations?: boolean | null
+          notification_new_offers?: boolean | null
+          notification_status_changes?: boolean | null
           phone?: string | null
+          push_notifications?: boolean | null
           specialties?: string[] | null
           updated_at?: string | null
           vehicle_color?: string | null
@@ -281,11 +327,16 @@ export type Database = {
           availability_schedule?: Json | null
           bio?: string | null
           created_at?: string | null
+          email_notifications?: boolean | null
           experience_years?: number | null
           full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          notification_negotiations?: boolean | null
+          notification_new_offers?: boolean | null
+          notification_status_changes?: boolean | null
           phone?: string | null
+          push_notifications?: boolean | null
           specialties?: string[] | null
           updated_at?: string | null
           vehicle_color?: string | null
