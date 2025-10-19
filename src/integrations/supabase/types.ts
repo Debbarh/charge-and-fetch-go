@@ -139,6 +139,60 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          offer_id: string | null
+          read: boolean
+          receiver_id: string
+          request_id: string | null
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          read?: boolean
+          receiver_id: string
+          request_id?: string | null
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          read?: boolean
+          receiver_id?: string
+          request_id?: string | null
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "driver_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       negotiations: {
         Row: {
           created_at: string
@@ -383,6 +437,34 @@ export type Database = {
       }
     }
     Views: {
+      conversations: {
+        Row: {
+          conversation_id: string | null
+          last_message: string | null
+          last_message_at: string | null
+          offer_id: string | null
+          other_user_id: string | null
+          other_user_name: string | null
+          request_id: string | null
+          unread_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "driver_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       top_drivers: {
         Row: {
           average_rating: number | null
