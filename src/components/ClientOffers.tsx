@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import NegotiationNotifications from './NegotiationNotifications';
+import ChatInterface from './ChatInterface';
 
 interface NegotiationHistory {
   id: string;
@@ -58,6 +59,7 @@ const ClientOffers = () => {
   const [showCounterOfferDialog, setShowCounterOfferDialog] = useState(false);
   const [showNegotiationDialog, setShowNegotiationDialog] = useState(false);
   const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [showChatDialog, setShowChatDialog] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<DriverOffer | null>(null);
   const [counterOffer, setCounterOffer] = useState({
     newPrice: '',
@@ -679,6 +681,19 @@ const ClientOffers = () => {
                   )}
 
                   <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedOffer(offer);
+                        setShowChatDialog(true);
+                      }}
+                      className="border-electric-300 text-electric-700 hover:bg-electric-50"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Contacter
+                    </Button>
+
                     {offer.status === 'pending' && (
                       <>
                         <Button 
@@ -695,7 +710,7 @@ const ClientOffers = () => {
                           onClick={() => openCounterOffer(offer)}
                           className="border-electric-300 text-electric-700 hover:bg-electric-50"
                         >
-                          <MessageSquare className="h-3 w-3 mr-1" />
+                          <ArrowLeftRight className="h-3 w-3 mr-1" />
                           Négocier
                         </Button>
                         <Button 
@@ -927,6 +942,18 @@ const ClientOffers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Chat Dialog */}
+      {selectedOffer && (
+        <ChatInterface
+          open={showChatDialog}
+          onOpenChange={setShowChatDialog}
+          receiverId={selectedOffer.driverId}
+          receiverName={selectedOffer.driverName}
+          requestId={clientRequest?.id}
+          offerId={selectedOffer.id}
+        />
+      )}
     </div>
   );
 };
