@@ -54,13 +54,6 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
-  // Rediriger vers la page d'authentification si non connecté
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate('/auth');
-    }
-  }, [loading, isAuthenticated, navigate]);
-
   // Fonction pour rediriger vers l'onglet offres après publication
   const handleRequestPublished = () => {
     setClientTab('offers');
@@ -72,7 +65,6 @@ const Index = () => {
       title: "Déconnexion réussie",
       description: "À bientôt !",
     });
-    navigate('/auth');
   };
 
   if (loading) {
@@ -487,26 +479,40 @@ const Index = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {profile?.roles && profile.roles.length > 0 && (
-                <div className="hidden sm:flex gap-1">
-                  {profile.roles.map(role => (
-                    <span
-                      key={role}
-                      className="text-xs px-2 py-1 rounded-full bg-electric-100 text-electric-700"
-                    >
-                      {role === 'chauffeur' ? '🚗 Chauffeur' : role === 'client' ? '👤 Client' : '⚙️ Admin'}
-                    </span>
-                  ))}
-                </div>
+              {isAuthenticated ? (
+                <>
+                  {profile?.roles && profile.roles.length > 0 && (
+                    <div className="hidden sm:flex gap-1">
+                      {profile.roles.map(role => (
+                        <span
+                          key={role}
+                          className="text-xs px-2 py-1 rounded-full bg-electric-100 text-electric-700"
+                        >
+                          {role === 'chauffeur' ? '🚗 Chauffeur' : role === 'client' ? '👤 Client' : '⚙️ Admin'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-electric-200 text-electric-600 hover:bg-electric-50"
+                  onClick={() => navigate('/auth')}
+                >
+                  <User className="h-4 w-4 mr-1" />
+                  Connexion
+                </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-200 text-red-600 hover:bg-red-50"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </div>
