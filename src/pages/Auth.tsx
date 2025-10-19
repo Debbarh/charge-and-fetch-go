@@ -231,23 +231,6 @@ const Auth = () => {
                           </div>
                         </label>
                       </div>
-
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent transition-colors">
-                        <Checkbox
-                          id="role-admin"
-                          checked={selectedRoles.includes('admin')}
-                          onCheckedChange={() => handleRoleToggle('admin')}
-                        />
-                        <label
-                          htmlFor="role-admin"
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="font-medium">Administrateur</div>
-                          <div className="text-sm text-muted-foreground">
-                            Gérer la plateforme
-                          </div>
-                        </label>
-                      </div>
                     </div>
                   </div>
                 </>
