@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface DriverRequest {
-  id: number;
+  id: string;
   customerName: string;
   pickupAddress: string;
   returnAddress: string;
@@ -20,7 +20,7 @@ interface DriverRequest {
 
 interface AvailableRequestsProps {
   requests: DriverRequest[];
-  onAcceptRequest: (requestId: number) => void;
+  onAcceptRequest: (requestId: string) => void;
   getUrgencyColor: (urgency: string) => string;
   getUrgencyLabel: (urgency: string) => string;
 }

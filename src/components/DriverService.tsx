@@ -8,9 +8,11 @@ import ClientRequests from './driver/ClientRequests';
 import MyOffers from './driver/MyOffers';
 import DriverStats from './driver/DriverStats';
 import CounterOfferDialog from './driver/CounterOfferDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DriverRequest {
-  id: number;
+  id: string;
   customerName: string;
   pickupAddress: string;
   returnAddress: string;
@@ -23,7 +25,7 @@ interface DriverRequest {
 }
 
 interface ClientRequest {
-  id: number;
+  id: string;
   customerName: string;
   pickupAddress: string;
   destinationAddress: string;
@@ -40,212 +42,162 @@ interface ClientRequest {
 const DriverService = () => {
   const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network'>('network');
   const [counterOffer, setCounterOffer] = useState({
-    requestId: 0,
+    requestId: '',
     newPrice: '',
     newDuration: '',
     message: ''
   });
   const [showCounterOfferDialog, setShowCounterOfferDialog] = useState(false);
   const [myOffers, setMyOffers] = useState<any[]>([]);
+  const [availableRequests, setAvailableRequests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user, profile } = useAuth();
 
-  // Simulated client requests from the ClientRequestForm
-  const clientRequests: ClientRequest[] = [
-    {
-      id: 101,
-      customerName: "Sophie M.",
-      pickupAddress: "78 Boulevard Saint-Germain, Paris",
-      destinationAddress: "Tesla Supercharger République",
-      vehicleModel: "Peugeot e-208",
-      urgency: 'high',
-      estimatedDuration: "4h",
-      proposedPrice: "35",
-      batteryLevel: "8",
-      notes: "Parking souterrain, code 1234. Véhicule en zone bleue.",
-      contactPhone: "+33 6 12 34 56 78",
-      status: 'pending'
-    },
-    {
-      id: 102,
-      customerName: "Marc T.",
-      pickupAddress: "15 Rue de la Paix, Paris",
-      destinationAddress: "",
-      vehicleModel: "BMW i3",
-      urgency: 'medium',
-      estimatedDuration: "2h",
-      proposedPrice: "20",
-      batteryLevel: "12",
-      notes: "Disponible toute la journée",
-      contactPhone: "+33 6 98 76 54 32",
-      status: 'pending'
-    }
-  ];
-
-  // Load driver offers from localStorage
+  // Charger les demandes et offres depuis Supabase
   useEffect(() => {
-    const savedOffers = localStorage.getItem('driverOffers');
-    if (savedOffers) {
-      setMyOffers(JSON.parse(savedOffers));
+    if (!user) return;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Charger toutes les demandes actives
+        const { data: requests, error: requestsError } = await supabase
+          .from('requests')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+
+        if (requestsError) throw requestsError;
+
+        if (requests) {
+          setAvailableRequests(requests.map(req => ({
+            id: req.id,
+            customerName: 'Client',
+            pickupAddress: req.pickup_address,
+            returnAddress: req.destination_address || req.pickup_address,
+            vehicleModel: req.vehicle_model,
+            estimatedTime: req.estimated_duration || '2h',
+            payment: `${req.proposed_price}€`,
+            distance: '1.2 km',
+            batteryLevel: req.battery_level,
+            urgency: req.urgency
+          })));
+        }
+
+        // Charger mes offres
+        const { data: offers, error: offersError } = await supabase
+          .from('driver_offers')
+          .select('*')
+          .eq('driver_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (offersError) throw offersError;
+
+        if (offers) {
+          setMyOffers(offers.map(offer => ({
+            id: offer.id,
+            requestId: offer.request_id,
+            status: offer.status,
+            proposedPrice: parseFloat(offer.proposed_price.toString()),
+            estimatedDuration: offer.estimated_duration,
+            message: offer.message || '',
+            sentAt: offer.created_at
+          })));
+        }
+      } catch (error: any) {
+        console.error('Erreur chargement données:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Écoute temps réel des nouvelles demandes
+    const channel = supabase
+      .channel('requests_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests',
+          filter: 'status=eq.active'
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const handleAcceptRequest = async (requestIdStr: string) => {
+    if (!user || !profile) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté en tant que chauffeur.",
+        variant: "destructive"
+      });
+      return;
     }
-  }, []);
 
-  const availableRequests: DriverRequest[] = [
-    {
-      id: 1,
-      customerName: "Marie L.",
-      pickupAddress: "123 Rue de Rivoli, Paris",
-      returnAddress: "123 Rue de Rivoli, Paris",
-      vehicleModel: "Tesla Model 3",
-      estimatedTime: "2h",
-      payment: "25€",
-      distance: "1.2 km",
-      batteryLevel: 15,
-      urgency: 'high'
-    },
-    {
-      id: 2,
-      customerName: "Jean D.",
-      pickupAddress: "45 Avenue des Champs, Paris",
-      returnAddress: "45 Avenue des Champs, Paris",
-      vehicleModel: "Renault Zoe",
-      estimatedTime: "3h",
-      payment: "18€",
-      distance: "0.8 km",
-      batteryLevel: 25,
-      urgency: 'medium'
+    try {
+      const request = availableRequests.find(r => r.id === requestIdStr);
+      if (!request) return;
+
+      const { error } = await supabase
+        .from('driver_offers')
+        .insert({
+          request_id: requestIdStr,
+          driver_id: user.id,
+          driver_name: profile.full_name || 'Chauffeur Pro',
+          driver_rating: 4.9,
+          driver_total_rides: 127,
+          driver_vehicle: 'Peugeot 208',
+          driver_experience: "5 ans d'expérience",
+          proposed_price: parseFloat(request.payment.replace('€', '')),
+          estimated_duration: request.estimatedTime,
+          message: 'Je peux prendre en charge votre demande rapidement !',
+          driver_phone: profile.phone || '+33 6 12 34 56 78',
+          status: 'pending',
+          response_time: '< 5 min',
+          availability: 'Immédiate'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Offre envoyée !",
+        description: "Votre proposition a été envoyée au client.",
+      });
+    } catch (error: any) {
+      console.error('Erreur envoi offre:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer l'offre.",
+        variant: "destructive"
+      });
     }
-  ];
-
-  const handleAcceptRequest = (requestId: number) => {
-    // Simulate creating an offer
-    const newOffer = {
-      id: Date.now(),
-      requestId: requestId,
-      status: 'sent',
-      proposedPrice: Math.floor(Math.random() * 20) + 20,
-      estimatedDuration: `${Math.floor(Math.random() * 3) + 2}h`,
-      message: 'Je peux prendre en charge votre demande rapidement !',
-      sentAt: new Date().toISOString()
-    };
-
-    const updatedOffers = [...myOffers, newOffer];
-    setMyOffers(updatedOffers);
-    localStorage.setItem('driverOffers', JSON.stringify(updatedOffers));
-
-    toast({
-      title: "Offre envoyée !",
-      description: "Votre proposition a été envoyée au client.",
-    });
   };
 
-  const handleAcceptClientRequest = (requestId: number) => {
-    const request = clientRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    // Create driver offer and add to localStorage for ClientOffers component
-    const driverOffer = {
-      id: Date.now(),
-      driverId: 1,
-      driverName: 'Chauffeur Pro',
-      driverRating: 4.9,
-      driverTotalRides: 127,
-      driverVehicle: 'Peugeot 208',
-      driverExperience: "5 ans d'expérience",
-      originalRequestId: requestId,
-      proposedPrice: request.proposedPrice,
-      estimatedDuration: request.estimatedDuration,
-      message: "J'accepte votre demande aux conditions proposées !",
-      driverPhone: '+33 6 12 34 56 78',
-      status: 'pending',
-      receivedAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-      negotiationHistory: [],
-      responseTime: '< 5 min',
-      availability: 'Immédiate'
-    };
-
-    // Add to received offers in localStorage
-    const existingOffers = JSON.parse(localStorage.getItem('receivedOffers') || '[]');
-    const updatedOffers = [...existingOffers, driverOffer];
-    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
-
-    // Add to my offers tracking
-    const myOffer = {
-      id: driverOffer.id,
-      requestId: requestId,
-      status: 'sent',
-      proposedPrice: request.proposedPrice,
-      estimatedDuration: request.estimatedDuration,
-      message: driverOffer.message,
-      sentAt: new Date().toISOString()
-    };
-
-    const updatedMyOffers = [...myOffers, myOffer];
-    setMyOffers(updatedMyOffers);
-    localStorage.setItem('driverOffers', JSON.stringify(updatedMyOffers));
-
-    toast({
-      title: "Demande client acceptée !",
-      description: "Le client a été notifié de votre acceptation.",
-    });
-  };
-
-  const handleRejectClientRequest = (requestId: number) => {
-    toast({
-      title: "Demande rejetée",
-      description: "La demande a été retirée de votre liste.",
-    });
-  };
-
-  const handleCounterOffer = (requestId: number) => {
-    setCounterOffer({ ...counterOffer, requestId });
+  const handleCounterOffer = (requestIdStr: string) => {
+    setCounterOffer({ ...counterOffer, requestId: requestIdStr });
     setShowCounterOfferDialog(true);
   };
 
   const submitCounterOffer = () => {
-    const request = clientRequests.find(r => r.id === counterOffer.requestId);
-    if (!request) return;
-
-    // Create counter-offer and add to localStorage
-    const driverOffer = {
-      id: Date.now(),
-      driverId: 1,
-      driverName: 'Chauffeur Pro',
-      driverRating: 4.9,
-      driverTotalRides: 127,
-      driverVehicle: 'Peugeot 208',
-      driverExperience: "5 ans d'expérience",
-      originalRequestId: counterOffer.requestId,
-      proposedPrice: counterOffer.newPrice,
-      estimatedDuration: counterOffer.newDuration || request.estimatedDuration,
-      message: counterOffer.message,
-      driverPhone: '+33 6 12 34 56 78',
-      status: 'pending',
-      receivedAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-      negotiationHistory: [{
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        from: 'driver',
-        price: counterOffer.newPrice,
-        duration: counterOffer.newDuration,
-        message: counterOffer.message,
-        status: 'pending'
-      }],
-      responseTime: '< 5 min',
-      availability: 'Immédiate'
-    };
-
-    const existingOffers = JSON.parse(localStorage.getItem('receivedOffers') || '[]');
-    const updatedOffers = [...existingOffers, driverOffer];
-    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
-
     toast({
       title: "Contre-proposition envoyée !",
       description: "Le client recevra votre nouvelle proposition.",
     });
     setShowCounterOfferDialog(false);
-    setCounterOffer({ requestId: 0, newPrice: '', newDuration: '', message: '' });
+    setCounterOffer({ requestId: '', newPrice: '', newDuration: '', message: '' });
   };
 
   const getUrgencyColor = (urgency: string) => {
@@ -267,6 +219,10 @@ const DriverService = () => {
   };
 
   const renderTabContent = () => {
+    if (isLoading) {
+      return <div className="text-center py-8">Chargement...</div>;
+    }
+
     switch (activeTab) {
       case 'available':
         return (
@@ -279,14 +235,9 @@ const DriverService = () => {
         );
       case 'client_requests':
         return (
-          <ClientRequests
-            requests={clientRequests}
-            onAcceptRequest={handleAcceptClientRequest}
-            onRejectRequest={handleRejectClientRequest}
-            onCounterOffer={handleCounterOffer}
-            getUrgencyColor={getUrgencyColor}
-            getUrgencyLabel={getUrgencyLabel}
-          />
+          <div className="text-center py-8 text-muted-foreground">
+            Fonctionnalité en développement
+          </div>
         );
       case 'my_offers':
         return <MyOffers offers={myOffers} />;

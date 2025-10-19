@@ -10,7 +10,7 @@ interface CounterOfferDialogProps {
   isOpen: boolean;
   onClose: () => void;
   counterOffer: {
-    requestId: number;
+    requestId: string;
     newPrice: string;
     newDuration: string;
     message: string;

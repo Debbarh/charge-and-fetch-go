@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Car, MapPin, Clock, Star, Euro, User, Phone, CheckCircle, X, MessageSquare, ArrowLeftRight, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NegotiationHistory {
-  id: number;
+  id: string;
   timestamp: string;
   from: 'client' | 'driver';
   price: string;
@@ -21,14 +22,14 @@ interface NegotiationHistory {
 }
 
 interface DriverOffer {
-  id: number;
-  driverId: number;
+  id: string;
+  driverId: string;
   driverName: string;
   driverRating: number;
   driverTotalRides: number;
   driverVehicle: string;
   driverExperience: string;
-  originalRequestId: number;
+  originalRequestId: string;
   proposedPrice: string;
   estimatedDuration: string;
   message: string;
@@ -42,14 +43,14 @@ interface DriverOffer {
 }
 
 interface ClientRequest {
-  id: number;
+  id: string;
   pickupAddress: string;
   destinationAddress: string;
   vehicleModel: string;
   proposedPrice: string;
   status: 'active' | 'completed' | 'cancelled' | 'driver_selected';
   createdAt: string;
-  selectedDriverId?: number;
+  selectedDriverId?: string;
 }
 
 const ClientOffers = () => {
@@ -74,68 +75,174 @@ const ClientOffers = () => {
   const [clientRequest, setClientRequest] = useState<ClientRequest | null>(null);
   const [receivedOffers, setReceivedOffers] = useState<DriverOffer[]>([]);
   const [selectedTab, setSelectedTab] = useState<'all' | 'pending' | 'negotiating' | 'selected'>('all');
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  // Charger les données depuis localStorage
+  // Charger les données depuis Supabase
   useEffect(() => {
-    const activeRequest = localStorage.getItem('activeClientRequest');
-    const offers = localStorage.getItem('receivedOffers');
-    
-    if (activeRequest) {
-      setClientRequest(JSON.parse(activeRequest));
-    }
-    
-    if (offers) {
-      const parsedOffers = JSON.parse(offers);
-      // Ensure negotiationHistory is always an array
-      const safeOffers = parsedOffers.map((offer: any) => ({
-        ...offer,
-        negotiationHistory: offer.negotiationHistory || []
-      }));
-      setReceivedOffers(safeOffers);
-    }
-  }, []);
+    if (!user) return;
 
-  const handleAcceptOffer = (offerId: number) => {
-    const updatedOffers = receivedOffers.map(offer => ({
-      ...offer,
-      status: offer.id === offerId ? 'selected' as const : 'rejected' as const,
-      lastActivity: new Date().toISOString()
-    }));
-    
-    setReceivedOffers(updatedOffers);
-    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
 
-    if (clientRequest) {
-      const updatedRequest = {
-        ...clientRequest,
-        status: 'driver_selected' as const,
-        selectedDriverId: offerId
-      };
-      setClientRequest(updatedRequest);
-      localStorage.setItem('activeClientRequest', JSON.stringify(updatedRequest));
+        // Charger la demande active du client
+        const { data: requests, error: requestError } = await supabase
+          .from('requests')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (requestError) throw requestError;
+
+        if (requests && requests.length > 0) {
+          const request = requests[0];
+          setClientRequest({
+            id: request.id,
+            pickupAddress: request.pickup_address,
+            destinationAddress: request.destination_address || '',
+            vehicleModel: request.vehicle_model,
+            proposedPrice: request.proposed_price.toString(),
+            status: request.status,
+            createdAt: request.created_at,
+            selectedDriverId: request.selected_driver_id
+          });
+
+          // Charger les offres pour cette demande
+          const { data: offers, error: offersError } = await supabase
+            .from('driver_offers')
+            .select('*')
+            .eq('request_id', request.id)
+            .order('created_at', { ascending: false });
+
+          if (offersError) throw offersError;
+
+          if (offers) {
+            setReceivedOffers(offers.map(offer => ({
+              id: offer.id,
+              driverId: offer.driver_id,
+              driverName: offer.driver_name,
+              driverRating: parseFloat(offer.driver_rating?.toString() || '0'),
+              driverTotalRides: offer.driver_total_rides || 0,
+              driverVehicle: offer.driver_vehicle,
+              driverExperience: offer.driver_experience || '',
+              originalRequestId: offer.request_id,
+              proposedPrice: offer.proposed_price.toString(),
+              estimatedDuration: offer.estimated_duration,
+              message: offer.message || '',
+              driverPhone: offer.driver_phone,
+              status: offer.status as any,
+              receivedAt: offer.created_at,
+              lastActivity: offer.last_activity,
+              negotiationHistory: [],
+              responseTime: offer.response_time || '< 5 min',
+              availability: offer.availability || 'Immédiate'
+            })));
+          }
+        }
+      } catch (error: any) {
+        console.error('Erreur chargement données:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger vos données.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Écoute en temps réel des nouvelles offres
+    const channel = supabase
+      .channel('driver_offers_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'driver_offers'
+        },
+        () => {
+          loadData(); // Recharger quand une offre change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, toast]);
+
+  const handleAcceptOffer = async (offerIdStr: string) => {
+    if (!clientRequest) return;
+
+    try {
+      // Mettre à jour le statut de l'offre sélectionnée
+      const { error: offerError } = await supabase
+        .from('driver_offers')
+        .update({ 
+          status: 'selected',
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', offerIdStr);
+
+      if (offerError) throw offerError;
+
+      // Mettre à jour le statut de la demande
+      const { error: requestError } = await supabase
+        .from('requests')
+        .update({ 
+          status: 'driver_selected',
+          selected_driver_id: offerIdStr
+        })
+        .eq('id', clientRequest.id);
+
+      if (requestError) throw requestError;
+
+      const offer = receivedOffers.find(o => o.id === offerIdStr);
+      toast({
+        title: "Chauffeur sélectionné !",
+        description: `Vous avez choisi ${offer?.driverName}. Il va être notifié et vous contactera bientôt.`,
+      });
+    } catch (error: any) {
+      console.error('Erreur acceptation offre:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'accepter l'offre.",
+        variant: "destructive"
+      });
     }
-
-    const offer = receivedOffers.find(o => o.id === offerId);
-    toast({
-      title: "Chauffeur sélectionné !",
-      description: `Vous avez choisi ${offer?.driverName}. Il va être notifié et vous contactera bientôt.`,
-    });
   };
 
-  const handleRejectOffer = (offerId: number) => {
-    const updatedOffers = receivedOffers.map(offer => 
-      offer.id === offerId 
-        ? { ...offer, status: 'rejected' as const, lastActivity: new Date().toISOString() }
-        : offer
-    );
-    setReceivedOffers(updatedOffers);
-    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
+  const handleRejectOffer = async (offerIdStr: string) => {
+    try {
+      const { error } = await supabase
+        .from('driver_offers')
+        .update({ 
+          status: 'rejected',
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', offerIdStr);
 
-    toast({
-      title: "Offre rejetée",
-      description: "Le chauffeur a été notifié du refus.",
-    });
+      if (error) throw error;
+
+      toast({
+        title: "Offre rejetée",
+        description: "Le chauffeur a été notifié du refus.",
+      });
+    } catch (error: any) {
+      console.error('Erreur rejet offre:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rejeter l'offre.",
+        variant: "destructive"
+      });
+    }
   };
 
   const openCounterOffer = (offer: DriverOffer) => {
@@ -148,7 +255,7 @@ const ClientOffers = () => {
     if (!selectedOffer) return;
 
     const newNegotiation: NegotiationHistory = {
-      id: Date.now(),
+      id: Date.now().toString(),
       timestamp: new Date().toISOString(),
       from: 'client',
       price: counterOffer.newPrice,
@@ -257,6 +364,17 @@ const ClientOffers = () => {
   };
 
   // Si aucune demande active, afficher un message
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Mes Offres Reçues</h2>
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!clientRequest) {
     return (
       <div className="space-y-6">
