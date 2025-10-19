@@ -36,14 +36,29 @@ interface ChargingStationHost {
 interface DriverProfile {
   name: string;
   phone: string;
-  experience: string;
-  vehicle: string;
-  notes: string;
+  experience_years: number;
+  vehicle_type: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number;
+  vehicle_color: string;
+  vehicle_plate: string;
+  bio: string;
+  hourly_rate: number;
   rating: number;
   totalRides: number;
   completionRate: number;
   responseTime: string;
   specialties: string[];
+  availability_schedule: {
+    monday: boolean;
+    tuesday: boolean;
+    wednesday: boolean;
+    thursday: boolean;
+    friday: boolean;
+    saturday: boolean;
+    sunday: boolean;
+  };
 }
 
 const ProfileManagement = () => {
@@ -67,14 +82,29 @@ const ProfileManagement = () => {
   const [driverProfile, setDriverProfile] = useState<DriverProfile>({
     name: '',
     phone: '',
-    experience: '',
-    vehicle: '',
-    notes: '',
+    experience_years: 0,
+    vehicle_type: '',
+    vehicle_make: '',
+    vehicle_model: '',
+    vehicle_year: new Date().getFullYear(),
+    vehicle_color: '',
+    vehicle_plate: '',
+    bio: '',
+    hourly_rate: 0,
     rating: 4.9,
     totalRides: 127,
     completionRate: 98,
     responseTime: '< 5 min',
-    specialties: ['Véhicules électriques', 'Urgences', 'Longue distance']
+    specialties: ['Véhicules électriques', 'Urgences', 'Longue distance'],
+    availability_schedule: {
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: true,
+      sunday: true
+    }
   });
 
   const [newStation, setNewStation] = useState({
@@ -307,7 +337,18 @@ const ProfileManagement = () => {
 
       {activeRole === 'driver' && isDriver && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Profil Chauffeur</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">Profil Chauffeur</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditProfileDialog(true)}
+            >
+              <Edit3 className="h-4 w-4 mr-1" />
+              Modifier le profil
+            </Button>
+          </div>
+          
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
@@ -317,17 +358,114 @@ const ProfileManagement = () => {
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">12</div>
+                <div className="text-2xl font-bold text-blue-600">{driverProfile.totalRides}</div>
                 <p className="text-sm text-muted-foreground">Services effectués</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-yellow-500">⭐ {userProfile.rating}</div>
+                <div className="text-2xl font-bold text-yellow-500">⭐ {driverProfile.rating}</div>
                 <p className="text-sm text-muted-foreground">Note moyenne</p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Vehicle Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Informations du Véhicule
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Type de véhicule</p>
+                  <p className="font-medium">{driverProfile.vehicle_type || 'Non renseigné'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Marque & Modèle</p>
+                  <p className="font-medium">
+                    {driverProfile.vehicle_make && driverProfile.vehicle_model
+                      ? `${driverProfile.vehicle_make} ${driverProfile.vehicle_model}`
+                      : 'Non renseigné'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Année</p>
+                  <p className="font-medium">{driverProfile.vehicle_year || 'Non renseigné'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Couleur</p>
+                  <p className="font-medium">{driverProfile.vehicle_color || 'Non renseigné'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Immatriculation</p>
+                  <p className="font-medium">{driverProfile.vehicle_plate || 'Non renseigné'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tarif horaire</p>
+                  <p className="font-medium text-electric-600">
+                    {driverProfile.hourly_rate ? `${driverProfile.hourly_rate}€/h` : 'Non défini'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Availability Schedule */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Disponibilités
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2">
+                {Object.entries(driverProfile.availability_schedule).map(([day, available]) => (
+                  <div
+                    key={day}
+                    className={`text-center p-2 rounded ${
+                      available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+                    }`}
+                  >
+                    <p className="text-xs font-medium capitalize">{day.slice(0, 3)}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Specialties and Experience */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Expérience & Spécialités</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Années d'expérience</p>
+                <p className="font-medium">{driverProfile.experience_years} ans</p>
+              </div>
+              {driverProfile.bio && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Bio</p>
+                  <p className="text-sm">{driverProfile.bio}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Spécialités</p>
+                <div className="flex flex-wrap gap-2">
+                  {driverProfile.specialties.map((specialty, index) => (
+                    <Badge key={index} variant="outline" className="bg-electric-50">
+                      {specialty}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -454,61 +592,156 @@ const ProfileManagement = () => {
           </DialogHeader>
           
           <form onSubmit={handleBecomeDriver} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="driver-name">Nom complet</Label>
+              <Input
+                id="driver-name"
+                placeholder="Jean Dupont"
+                value={driverProfile.name}
+                onChange={(e) => setDriverProfile({ ...driverProfile, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="driver-phone">Téléphone</Label>
+              <Input
+                id="driver-phone"
+                type="tel"
+                placeholder="+33 6 12 34 56 78"
+                value={driverProfile.phone}
+                onChange={(e) => setDriverProfile({ ...driverProfile, phone: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="driver-bio">Bio / Présentation</Label>
+              <Textarea
+                id="driver-bio"
+                placeholder="Parlez de votre expérience..."
+                value={driverProfile.bio}
+                onChange={(e) => setDriverProfile({ ...driverProfile, bio: e.target.value })}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nom complet</Label>
+                <Label htmlFor="experience-years">Années d'expérience</Label>
                 <Input
-                  id="name"
-                  placeholder="Jean Dupont"
-                  value={driverProfile.name}
-                  onChange={(e) => setDriverProfile({ ...driverProfile, name: e.target.value })}
+                  id="experience-years"
+                  type="number"
+                  min="0"
+                  placeholder="5"
+                  value={driverProfile.experience_years || ''}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, experience_years: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourly-rate">Tarif horaire (€)</Label>
+                <Input
+                  id="hourly-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="25.00"
+                  value={driverProfile.hourly_rate || ''}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, hourly_rate: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vehicle-type">Type de véhicule</Label>
+              <Input
+                id="vehicle-type"
+                placeholder="Berline, SUV, Camionnette..."
+                value={driverProfile.vehicle_type}
+                onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_type: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicle-make">Marque</Label>
+                <Input
+                  id="vehicle-make"
+                  placeholder="Tesla, Renault..."
+                  value={driverProfile.vehicle_make}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_make: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Téléphone</Label>
+                <Label htmlFor="vehicle-model">Modèle</Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+33 6 12 34 56 78"
-                  value={driverProfile.phone}
-                  onChange={(e) => setDriverProfile({ ...driverProfile, phone: e.target.value })}
+                  id="vehicle-model"
+                  placeholder="Model 3, Zoe..."
+                  value={driverProfile.vehicle_model}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_model: e.target.value })}
                   required
+              />
+            </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicle-year">Année</Label>
+                <Input
+                  id="vehicle-year"
+                  type="number"
+                  min="1990"
+                  max={new Date().getFullYear() + 1}
+                  placeholder="2023"
+                  value={driverProfile.vehicle_year || ''}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_year: parseInt(e.target.value) || new Date().getFullYear() })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vehicle-color">Couleur</Label>
+                <Input
+                  id="vehicle-color"
+                  placeholder="Noir, Blanc..."
+                  value={driverProfile.vehicle_color}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_color: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vehicle-plate">Immatriculation</Label>
+                <Input
+                  id="vehicle-plate"
+                  placeholder="AB-123-CD"
+                  value={driverProfile.vehicle_plate}
+                  onChange={(e) => setDriverProfile({ ...driverProfile, vehicle_plate: e.target.value.toUpperCase() })}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="vehicle">Votre véhicule</Label>
-              <Input
-                id="vehicle"
-                placeholder="Renault Clio, Peugeot 208..."
-                value={driverProfile.vehicle}
-                onChange={(e) => setDriverProfile({ ...driverProfile, vehicle: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="experience">Expérience de conduite</Label>
-              <Input
-                id="experience"
-                placeholder="5 ans de permis, habitué des véhicules électriques..."
-                value={driverProfile.experience}
-                onChange={(e) => setDriverProfile({ ...driverProfile, experience: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Informations supplémentaires (optionnel)</Label>
-              <Textarea
-                id="notes"
-                placeholder="Disponibilités, zones de prédilection..."
-                value={driverProfile.notes}
-                onChange={(e) => setDriverProfile({ ...driverProfile, notes: e.target.value })}
-                rows={3}
-              />
+              <Label>Disponibilités</Label>
+              <div className="grid grid-cols-7 gap-2">
+                {Object.entries(driverProfile.availability_schedule).map(([day, available]) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setDriverProfile({
+                      ...driverProfile,
+                      availability_schedule: {
+                        ...driverProfile.availability_schedule,
+                        [day]: !available
+                      }
+                    })}
+                    className={`p-2 rounded text-xs font-medium transition-colors ${
+                      available 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {day.slice(0, 3).toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <DialogFooter>

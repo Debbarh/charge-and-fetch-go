@@ -188,25 +188,58 @@ export type Database = {
       }
       profiles: {
         Row: {
+          availability_schedule: Json | null
+          bio: string | null
           created_at: string | null
+          experience_years: number | null
           full_name: string | null
+          hourly_rate: number | null
           id: string
           phone: string | null
+          specialties: string[] | null
           updated_at: string | null
+          vehicle_color: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_plate: string | null
+          vehicle_type: string | null
+          vehicle_year: number | null
         }
         Insert: {
+          availability_schedule?: Json | null
+          bio?: string | null
           created_at?: string | null
+          experience_years?: number | null
           full_name?: string | null
+          hourly_rate?: number | null
           id: string
           phone?: string | null
+          specialties?: string[] | null
           updated_at?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          vehicle_year?: number | null
         }
         Update: {
+          availability_schedule?: Json | null
+          bio?: string | null
           created_at?: string | null
+          experience_years?: number | null
           full_name?: string | null
+          hourly_rate?: number | null
           id?: string
           phone?: string | null
+          specialties?: string[] | null
           updated_at?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          vehicle_year?: number | null
         }
         Relationships: []
       }
