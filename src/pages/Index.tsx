@@ -25,6 +25,7 @@ import MessagesList from '@/components/MessagesList';
 import RideTracker from '@/components/RideTracker';
 import RequestHistory from '@/components/RequestHistory';
 import MessageNotificationListener from '@/components/MessageNotificationListener';
+import ActiveRides from '@/components/ActiveRides';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -456,19 +457,7 @@ const Index = () => {
         return <MessagesList />;
 
       case 'tracking':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Suivi en temps réel</h2>
-            <RideTracker
-              requestId="demo-request-id"
-              pickupLat={48.8566}
-              pickupLng={2.3522}
-              destinationLat={48.8606}
-              destinationLng={2.3376}
-              isDriver={hasRole('chauffeur')}
-            />
-          </div>
-        );
+        return <ActiveRides />;
 
       case 'profile':
         return <ProfileManagement />;
