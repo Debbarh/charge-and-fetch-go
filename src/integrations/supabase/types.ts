@@ -85,6 +85,53 @@ export type Database = {
           },
         ]
       }
+      negotiations: {
+        Row: {
+          created_at: string
+          from_role: Database["public"]["Enums"]["negotiation_role"]
+          from_user_id: string
+          id: string
+          message: string
+          offer_id: string
+          proposed_duration: string | null
+          proposed_price: number
+          status: Database["public"]["Enums"]["negotiation_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_role: Database["public"]["Enums"]["negotiation_role"]
+          from_user_id: string
+          id?: string
+          message: string
+          offer_id: string
+          proposed_duration?: string | null
+          proposed_price: number
+          status?: Database["public"]["Enums"]["negotiation_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_role?: Database["public"]["Enums"]["negotiation_role"]
+          from_user_id?: string
+          id?: string
+          message?: string
+          offer_id?: string
+          proposed_duration?: string | null
+          proposed_price?: number
+          status?: Database["public"]["Enums"]["negotiation_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negotiations_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "driver_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -189,6 +236,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_negotiation_history: {
+        Args: { p_offer_id: string }
+        Returns: {
+          created_at: string
+          from_role: Database["public"]["Enums"]["negotiation_role"]
+          from_user_id: string
+          from_user_name: string
+          id: string
+          message: string
+          proposed_duration: string
+          proposed_price: number
+          status: Database["public"]["Enums"]["negotiation_status"]
+        }[]
+      }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: {
@@ -205,6 +266,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "chauffeur" | "client"
+      negotiation_role: "client" | "driver"
+      negotiation_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "counter_offered"
       offer_status:
         | "pending"
         | "accepted"
@@ -343,6 +410,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "chauffeur", "client"],
+      negotiation_role: ["client", "driver"],
+      negotiation_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "counter_offered",
+      ],
       offer_status: [
         "pending",
         "accepted",
