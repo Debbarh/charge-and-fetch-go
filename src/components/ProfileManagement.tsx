@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import NotificationPreferences from './NotificationPreferences';
+import BecomeDriverForm from './BecomeDriverForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface UserProfile {
   name: string;
@@ -1069,12 +1071,21 @@ const ProfileManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Préférences de notifications */}
-      {activeRole === 'client' && (
-        <div className="mt-6">
+      {/* Préférences et devenir chauffeur */}
+      <Tabs defaultValue="notifications" className="mt-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="driver">Devenir chauffeur</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="notifications" className="mt-4">
           <NotificationPreferences />
-        </div>
-      )}
+        </TabsContent>
+        
+        <TabsContent value="driver" className="mt-4">
+          <BecomeDriverForm />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

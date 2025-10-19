@@ -139,6 +139,78 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_verifications: {
+        Row: {
+          bio: string | null
+          created_at: string
+          driver_license_url: string | null
+          experience_years: number
+          hourly_rate: number | null
+          id: string
+          identity_document_url: string | null
+          insurance_url: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_registration_url: string | null
+          vehicle_year: number
+          verified_at: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          driver_license_url?: string | null
+          experience_years?: number
+          hourly_rate?: number | null
+          id?: string
+          identity_document_url?: string | null
+          insurance_url?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_registration_url?: string | null
+          vehicle_year: number
+          verified_at?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          driver_license_url?: string | null
+          experience_years?: number
+          hourly_rate?: number | null
+          id?: string
+          identity_document_url?: string | null
+          insurance_url?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_color?: string
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_plate?: string
+          vehicle_registration_url?: string | null
+          vehicle_year?: number
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       driver_wallets: {
         Row: {
           balance: number
@@ -696,6 +768,10 @@ export type Database = {
       }
     }
     Functions: {
+      approve_driver_verification: {
+        Args: { verification_id: string }
+        Returns: undefined
+      }
       get_negotiation_history: {
         Args: { p_offer_id: string }
         Returns: {
