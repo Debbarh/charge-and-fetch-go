@@ -24,6 +24,7 @@ import ActivityDashboard from '@/components/ActivityDashboard';
 import MessagesList from '@/components/MessagesList';
 import RideTracker from '@/components/RideTracker';
 import RequestHistory from '@/components/RequestHistory';
+import MessageNotificationListener from '@/components/MessageNotificationListener';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -479,6 +480,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-electric-50 via-white to-blue-50">
+      {/* Message Notification Listener */}
+      <MessageNotificationListener />
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-md border-b border-electric-100 sticky top-0 z-40">
         <div className="px-4 py-4">
