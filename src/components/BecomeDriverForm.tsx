@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Upload, CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
+import { Car, Upload, Check, AlertCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,28 +11,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
-interface DriverVerification {
+interface VerificationStatus {
   id: string;
   status: 'pending' | 'approved' | 'rejected';
-  vehicle_make: string;
-  vehicle_model: string;
-  vehicle_year: number;
-  vehicle_color: string;
-  vehicle_plate: string;
-  experience_years: number;
-  bio: string | null;
-  hourly_rate: number | null;
-  created_at: string;
   rejection_reason: string | null;
+  created_at: string;
 }
 
 const BecomeDriverForm = () => {
-  const { user, hasRole } = useAuth();
-  const [existingVerification, setExistingVerification] = useState<DriverVerification | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form state
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
   const [formData, setFormData] = useState({
     vehicle_make: '',
     vehicle_model: '',
@@ -41,107 +30,73 @@ const BecomeDriverForm = () => {
     vehicle_plate: '',
     experience_years: 0,
     bio: '',
-    hourly_rate: ''
+    hourly_rate: 25
   });
 
   useEffect(() => {
-    if (user) {
-      checkExistingVerification();
-    }
+    loadVerificationStatus();
   }, [user]);
 
-  const checkExistingVerification = async () => {
+  const loadVerificationStatus = async () => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from('driver_verifications')
-        .select('*')
+        .select('id, status, rejection_reason, created_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        setExistingVerification(data as DriverVerification);
-        setFormData({
-          vehicle_make: data.vehicle_make,
-          vehicle_model: data.vehicle_model,
-          vehicle_year: data.vehicle_year,
-          vehicle_color: data.vehicle_color,
-          vehicle_plate: data.vehicle_plate,
-          experience_years: data.experience_years,
-          bio: data.bio || '',
-          hourly_rate: data.hourly_rate?.toString() || ''
+        setVerification({
+          id: data.id,
+          status: data.status as 'pending' | 'approved' | 'rejected',
+          rejection_reason: data.rejection_reason,
+          created_at: data.created_at
         });
       }
     } catch (error) {
-      console.error('Erreur vérification:', error);
-    } finally {
-      setLoading(false);
+      console.error('Erreur chargement vérification:', error);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user) {
-      toast.error('Vous devez être connecté');
-      return;
-    }
+    if (!user) return;
 
     // Validation
-    if (!formData.vehicle_make || !formData.vehicle_model || !formData.vehicle_color || !formData.vehicle_plate) {
-      toast.error('Veuillez remplir tous les champs requis');
+    if (!formData.vehicle_make || !formData.vehicle_model || !formData.vehicle_plate) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    setSubmitting(true);
+    setLoading(true);
 
     try {
-      const submitData = {
-        user_id: user.id,
-        vehicle_make: formData.vehicle_make,
-        vehicle_model: formData.vehicle_model,
-        vehicle_year: formData.vehicle_year,
-        vehicle_color: formData.vehicle_color,
-        vehicle_plate: formData.vehicle_plate.toUpperCase(),
-        experience_years: formData.experience_years,
-        bio: formData.bio || null,
-        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
-        status: 'pending'
-      };
-
-      let error;
-
-      if (existingVerification && existingVerification.status === 'pending') {
-        // Update existing pending verification
-        const { error: updateError } = await supabase
-          .from('driver_verifications')
-          .update(submitData)
-          .eq('id', existingVerification.id);
-        error = updateError;
-      } else {
-        // Create new verification
-        const { error: insertError } = await supabase
-          .from('driver_verifications')
-          .insert(submitData);
-        error = insertError;
-      }
+      const { error } = await supabase
+        .from('driver_verifications')
+        .insert({
+          user_id: user.id,
+          ...formData,
+          status: 'pending'
+        });
 
       if (error) throw error;
 
-      toast.success('Demande soumise !', {
-        description: 'Nous examinerons votre demande sous 24-48h'
+      toast.success('Demande envoyée avec succès !', {
+        description: 'Nous examinerons votre dossier dans les 24-48h'
       });
 
-      // Reload verification status
-      checkExistingVerification();
+      loadVerificationStatus();
     } catch (error: any) {
       console.error('Erreur soumission:', error);
-      toast.error('Impossible de soumettre la demande');
+      toast.error('Impossible d\'envoyer la demande', {
+        description: error.message
+      });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -149,187 +104,141 @@ const BecomeDriverForm = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">Chargement...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Si déjà chauffeur
-  if (hasRole('chauffeur')) {
-    return (
-      <Card className="bg-green-50 border-green-200">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-8 w-8 text-green-600" />
-            <div>
-              <h3 className="font-semibold text-green-800">Vous êtes chauffeur vérifié</h3>
-              <p className="text-sm text-green-700">Vous pouvez accepter des demandes</p>
+  // Afficher le statut si une demande existe
+  if (verification) {
+    if (verification.status === 'pending') {
+      return (
+        <Card className="bg-gradient-to-br from-blue-50 to-electric-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Clock className="h-12 w-12 text-blue-600" />
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-blue-900">Demande en cours de traitement</h3>
+                <p className="text-sm text-blue-700">
+                  Soumise le {new Date(verification.created_at).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                En attente
+              </Badge>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+            <p className="text-sm text-blue-800">
+              Nous examinons votre dossier. Vous recevrez une notification dès que la vérification sera terminée (24-48h).
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (verification.status === 'rejected') {
+      return (
+        <Card className="border-red-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="h-12 w-12 text-red-600" />
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-red-900">Demande refusée</h3>
+                <p className="text-sm text-red-700">
+                  Refusée le {new Date(verification.created_at).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+            </div>
+            {verification.rejection_reason && (
+              <Alert>
+                <AlertDescription className="text-sm">
+                  <strong>Raison :</strong> {verification.rejection_reason}
+                </AlertDescription>
+              </Alert>
+            )}
+            <Button
+              className="mt-4 w-full"
+              onClick={() => setVerification(null)}
+            >
+              Soumettre une nouvelle demande
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
   }
 
-  // Si demande en cours
-  if (existingVerification && existingVerification.status === 'pending') {
-    return (
-      <Card className="bg-orange-50 border-orange-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orange-600" />
-            Demande en cours de vérification
-          </CardTitle>
-          <CardDescription>
-            Votre demande a été soumise le {new Date(existingVerification.created_at).toLocaleDateString('fr-FR')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>
-              Nous examinerons votre demande sous 24-48h. Vous recevrez une notification une fois la vérification terminée.
-            </AlertDescription>
-          </Alert>
-          
-          <div className="mt-4 space-y-2 text-sm">
-            <p><strong>Véhicule:</strong> {existingVerification.vehicle_make} {existingVerification.vehicle_model} ({existingVerification.vehicle_year})</p>
-            <p><strong>Plaque:</strong> {existingVerification.vehicle_plate}</p>
-            <p><strong>Expérience:</strong> {existingVerification.experience_years} ans</p>
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={() => setExistingVerification(null)}
-            className="mt-4"
-          >
-            Modifier ma demande
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Si demande rejetée
-  if (existingVerification && existingVerification.status === 'rejected') {
-    return (
-      <Card className="bg-red-50 border-red-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-600" />
-            Demande refusée
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive">
-            <AlertDescription>
-              {existingVerification.rejection_reason || 'Votre demande n\'a pas été approuvée. Veuillez vérifier vos informations et soumettre une nouvelle demande.'}
-            </AlertDescription>
-          </Alert>
-
-          <Button
-            onClick={() => setExistingVerification(null)}
-            className="mt-4"
-          >
-            Soumettre une nouvelle demande
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Formulaire de candidature
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Car className="h-6 w-6 text-electric-600" />
-          Devenir chauffeur
-        </CardTitle>
-        <CardDescription>
-          Remplissez ce formulaire pour commencer à gagner de l'argent en tant que chauffeur
-        </CardDescription>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-full bg-electric-100 flex items-center justify-center">
+            <Car className="h-6 w-6 text-electric-600" />
+          </div>
+          <div>
+            <CardTitle>Devenir chauffeur valet</CardTitle>
+            <CardDescription>
+              Rejoignez notre communauté de chauffeurs professionnels
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations du véhicule */}
           <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Car className="h-4 w-4" />
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <Car className="h-5 w-5 text-electric-600" />
               Informations du véhicule
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="vehicle_make">Marque *</Label>
                 <Input
                   id="vehicle_make"
                   value={formData.vehicle_make}
                   onChange={(e) => handleChange('vehicle_make', e.target.value)}
-                  placeholder="Peugeot, Renault, Tesla..."
+                  placeholder="ex: Peugeot"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="vehicle_model">Modèle *</Label>
                 <Input
                   id="vehicle_model"
                   value={formData.vehicle_model}
                   onChange={(e) => handleChange('vehicle_model', e.target.value)}
-                  placeholder="208, Zoe, Model 3..."
+                  placeholder="ex: 208"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_year">Année *</Label>
+              <div>
+                <Label htmlFor="vehicle_year">Année</Label>
                 <Input
                   id="vehicle_year"
                   type="number"
-                  min="2000"
-                  max={new Date().getFullYear() + 1}
                   value={formData.vehicle_year}
                   onChange={(e) => handleChange('vehicle_year', parseInt(e.target.value))}
-                  required
+                  min="2000"
+                  max={new Date().getFullYear() + 1}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_color">Couleur *</Label>
+              <div>
+                <Label htmlFor="vehicle_color">Couleur</Label>
                 <Input
                   id="vehicle_color"
                   value={formData.vehicle_color}
                   onChange={(e) => handleChange('vehicle_color', e.target.value)}
-                  placeholder="Blanc, Noir, Bleu..."
-                  required
+                  placeholder="ex: Blanche"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_plate">Plaque d'immatriculation *</Label>
+              <div className="md:col-span-2">
+                <Label htmlFor="vehicle_plate">Immatriculation *</Label>
                 <Input
                   id="vehicle_plate"
                   value={formData.vehicle_plate}
                   onChange={(e) => handleChange('vehicle_plate', e.target.value.toUpperCase())}
-                  placeholder="AB-123-CD"
+                  placeholder="ex: AB-123-CD"
                   required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="experience_years">Années d'expérience</Label>
-                <Input
-                  id="experience_years"
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={formData.experience_years}
-                  onChange={(e) => handleChange('experience_years', parseInt(e.target.value))}
                 />
               </div>
             </div>
@@ -337,53 +246,68 @@ const BecomeDriverForm = () => {
 
           {/* Informations professionnelles */}
           <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Informations professionnelles
-            </h3>
+            <h3 className="font-semibold text-lg">Expérience professionnelle</h3>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="experience_years">Années d'expérience</Label>
+                <Input
+                  id="experience_years"
+                  type="number"
+                  value={formData.experience_years}
+                  onChange={(e) => handleChange('experience_years', parseInt(e.target.value))}
+                  min="0"
+                  max="50"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="hourly_rate">Tarif horaire (€)</Label>
+                <Input
+                  id="hourly_rate"
+                  type="number"
+                  value={formData.hourly_rate}
+                  onChange={(e) => handleChange('hourly_rate', parseFloat(e.target.value))}
+                  min="10"
+                  max="100"
+                  step="5"
+                />
+              </div>
+            </div>
+
+            <div>
               <Label htmlFor="bio">Présentation (optionnel)</Label>
               <Textarea
                 id="bio"
                 value={formData.bio}
                 onChange={(e) => handleChange('bio', e.target.value)}
-                placeholder="Parlez-nous de votre expérience..."
+                placeholder="Parlez de votre expérience, de vos compétences..."
                 rows={4}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="hourly_rate">Tarif horaire souhaité (optionnel)</Label>
-              <div className="relative">
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.hourly_rate}
-                  onChange={(e) => handleChange('hourly_rate', e.target.value)}
-                  placeholder="25.00"
-                />
-                <span className="absolute right-3 top-2.5 text-muted-foreground">€/h</span>
-              </div>
-            </div>
           </div>
 
-          {/* Info */}
+          {/* Informations importantes */}
           <Alert>
-            <AlertDescription className="text-sm">
-              💡 Après soumission, votre demande sera examinée sous 24-48h. Vous recevrez une notification de notre décision.
+            <Check className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Prochaines étapes :</strong>
+              <ul className="list-disc list-inside mt-2 text-sm space-y-1">
+                <li>Soumission de votre demande</li>
+                <li>Vérification par notre équipe (24-48h)</li>
+                <li>Notification de validation ou demande de documents supplémentaires</li>
+                <li>Activation de votre compte chauffeur</li>
+              </ul>
             </AlertDescription>
           </Alert>
 
-          {/* Submit */}
           <Button
             type="submit"
             className="w-full"
-            disabled={submitting}
+            size="lg"
+            disabled={loading}
           >
-            {submitting ? 'Envoi en cours...' : 'Soumettre ma candidature'}
+            {loading ? 'Envoi en cours...' : 'Envoyer ma demande'}
           </Button>
         </form>
       </CardContent>
