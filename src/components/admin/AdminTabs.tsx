@@ -3,6 +3,8 @@ import { LayoutDashboard, UserCheck, Users, BarChart3 } from 'lucide-react';
 import AdminStats from './AdminStats';
 import KYCManagement from './KYCManagement';
 import TopDriversLeaderboard from '../TopDriversLeaderboard';
+import DriversManagement from './DriversManagement';
+import AdminCharts from './AdminCharts';
 
 const AdminTabs = () => {
   return (
@@ -52,11 +54,12 @@ const AdminTabs = () => {
         </TabsContent>
 
         <TabsContent value="drivers" className="mt-6">
-          <TopDriversLeaderboard />
+          <DriversManagement />
         </TabsContent>
 
-        <TabsContent value="stats" className="mt-6">
+        <TabsContent value="stats" className="mt-6 space-y-6">
           <AdminStats />
+          <AdminCharts />
         </TabsContent>
       </Tabs>
     </div>
