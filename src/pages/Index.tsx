@@ -30,6 +30,7 @@ import ActiveRides from '@/components/ActiveRides';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { ShieldCheck } from 'lucide-react';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import BecomeDriverForm from '@/components/BecomeDriverForm';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -63,6 +64,7 @@ const Index = () => {
     { id: 'map', label: 'Carte', icon: MapPin },
     { id: 'valet', label: 'Demande', icon: Car },
     { id: 'driver', label: 'Chauffeur', icon: Users },
+    ...(isAuthenticated && !hasRole('chauffeur') ? [{ id: 'become-driver', label: 'Devenir Chauffeur', icon: Car }] : []),
     { id: 'tracking', label: 'Suivi', icon: Navigation },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'activity', label: 'Activité', icon: Activity },
@@ -452,6 +454,20 @@ const Index = () => {
 
       case 'driver':
         return <DriverService />;
+
+      case 'become-driver':
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-r from-electric-50 to-blue-50 border border-electric-200 rounded-lg">
+              <h2 className="text-lg font-bold text-electric-800 mb-2">🚗 Devenez Chauffeur Professionnel</h2>
+              <p className="text-sm text-electric-700">
+                Gagnez de l'argent en proposant vos services de recharge valet pour véhicules électriques.
+                Remplissez le formulaire ci-dessous avec vos documents KYC pour validation.
+              </p>
+            </div>
+            <BecomeDriverForm />
+          </div>
+        );
 
       case 'bookings':
         return <RequestHistory />;

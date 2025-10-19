@@ -15,7 +15,6 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['client']);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,24 +37,6 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleRoleToggle = (role: string) => {
-    setSelectedRoles(prev => {
-      if (prev.includes(role)) {
-        // Au moins un rôle doit être sélectionné
-        if (prev.length === 1) {
-          toast({
-            title: "Erreur",
-            description: "Vous devez sélectionner au moins un rôle",
-            variant: "destructive"
-          });
-          return prev;
-        }
-        return prev.filter(r => r !== role);
-      } else {
-        return [...prev, role];
-      }
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,16 +58,7 @@ const Auth = () => {
         });
         navigate('/');
       } else {
-        // Inscription
-        if (selectedRoles.length === 0) {
-          toast({
-            title: "Erreur",
-            description: "Veuillez sélectionner au moins un rôle",
-            variant: "destructive"
-          });
-          return;
-        }
-
+        // Inscription - tous les nouveaux utilisateurs sont des clients
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -102,23 +74,18 @@ const Auth = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Ajouter les rôles sélectionnés
-          const rolesToInsert = selectedRoles.map(role => ({
-            user_id: data.user!.id,
-            role: role as 'admin' | 'chauffeur' | 'client'
-          }));
-
+          // Attribuer uniquement le rôle "client" lors de l'inscription
           const { error: rolesError } = await supabase
             .from('user_roles')
-            .insert(rolesToInsert);
+            .insert({ user_id: data.user.id, role: 'client' });
 
           if (rolesError) {
-            console.error('Erreur lors de l\'ajout des rôles:', rolesError);
+            console.error('Erreur lors de l\'ajout du rôle:', rolesError);
           }
 
           toast({
             title: "Inscription réussie !",
-            description: "Votre compte a été créé avec succès.",
+            description: "Bienvenue ! Vous pouvez maintenant faire des demandes de service.",
           });
 
           // Connexion automatique après l'inscription
@@ -158,7 +125,7 @@ const Auth = () => {
             <CardDescription>
               {isLogin 
                 ? 'Connectez-vous à votre compte' 
-                : 'Créez votre compte pour commencer'}
+                : 'Créez votre compte client. Vous pourrez devenir chauffeur après validation KYC.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -195,43 +162,12 @@ const Auth = () => {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <Label>Sélectionnez votre(vos) rôle(s)</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent transition-colors">
-                        <Checkbox
-                          id="role-client"
-                          checked={selectedRoles.includes('client')}
-                          onCheckedChange={() => handleRoleToggle('client')}
-                        />
-                        <label
-                          htmlFor="role-client"
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="font-medium">Client</div>
-                          <div className="text-sm text-muted-foreground">
-                            Demander des services de recharge
-                          </div>
-                        </label>
-                      </div>
-
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent transition-colors">
-                        <Checkbox
-                          id="role-chauffeur"
-                          checked={selectedRoles.includes('chauffeur')}
-                          onCheckedChange={() => handleRoleToggle('chauffeur')}
-                        />
-                        <label
-                          htmlFor="role-chauffeur"
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="font-medium">Chauffeur</div>
-                          <div className="text-sm text-muted-foreground">
-                            Proposer des services de recharge valet
-                          </div>
-                        </label>
-                      </div>
-                    </div>
+                  <div className="p-4 bg-electric-50 border border-electric-200 rounded-lg">
+                    <p className="text-sm text-electric-800">
+                      <strong>🚗 Vous voulez devenir chauffeur ?</strong>
+                      <br />
+                      Inscrivez-vous d'abord comme client, puis soumettez votre demande avec vos documents dans l'onglet "Devenir Chauffeur".
+                    </p>
                   </div>
                 </>
               )}
@@ -290,7 +226,6 @@ const Auth = () => {
                   setPassword('');
                   setFullName('');
                   setPhone('');
-                  setSelectedRoles(['client']);
                 }}
                 className="text-sm text-electric-600 hover:text-electric-700 hover:underline"
               >
