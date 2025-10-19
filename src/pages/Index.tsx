@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut, Activity, MessageSquare } from 'lucide-react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut, Activity, MessageSquare, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import TopDrivers from '@/components/TopDrivers';
 import NotificationCenter from '@/components/NotificationCenter';
 import ActivityDashboard from '@/components/ActivityDashboard';
 import MessagesList from '@/components/MessagesList';
+import RideTracker from '@/components/RideTracker';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ const Index = () => {
     { id: 'map', label: 'Carte', icon: MapPin },
     { id: 'valet', label: 'Demande', icon: Car },
     { id: 'driver', label: 'Chauffeur', icon: Users },
+    { id: 'tracking', label: 'Suivi', icon: Navigation },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'activity', label: 'Activité', icon: Activity },
     { id: 'bookings', label: 'Historique', icon: Clock },
@@ -471,6 +473,21 @@ const Index = () => {
 
       case 'messages':
         return <MessagesList />;
+
+      case 'tracking':
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground">Suivi en temps réel</h2>
+            <RideTracker
+              requestId="demo-request-id"
+              pickupLat={48.8566}
+              pickupLng={2.3522}
+              destinationLat={48.8606}
+              destinationLng={2.3376}
+              isDriver={hasRole('chauffeur')}
+            />
+          </div>
+        );
 
       case 'profile':
         return <ProfileManagement />;
