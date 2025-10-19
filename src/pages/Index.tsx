@@ -466,7 +466,8 @@ const Index = () => {
         return <ActiveRides />;
 
       case 'admin':
-        return hasRole('admin') ? <AdminDashboard /> : null;
+        // Redirection vers /admin au lieu d'afficher ici
+        return null;
 
       case 'profile':
         return <ProfileManagement />;
@@ -549,7 +550,13 @@ const Index = () => {
                 key={tab.id}
                 variant="ghost"
                 size="sm"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === 'admin') {
+                    navigate('/admin');
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
                 className={`flex flex-col items-center gap-1 h-16 hover:bg-electric-50 transition-all duration-200 ${
                   isActive 
                     ? 'text-electric-600 bg-electric-50 scale-105' 
