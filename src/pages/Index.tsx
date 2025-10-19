@@ -26,6 +26,8 @@ import RideTracker from '@/components/RideTracker';
 import RequestHistory from '@/components/RequestHistory';
 import MessageNotificationListener from '@/components/MessageNotificationListener';
 import ActiveRides from '@/components/ActiveRides';
+import AdminDashboard from '@/components/admin/AdminDashboard';
+import { ShieldCheck } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -62,6 +64,7 @@ const Index = () => {
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'activity', label: 'Activité', icon: Activity },
     { id: 'bookings', label: 'Historique', icon: Clock },
+    ...(hasRole('admin') ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
@@ -458,6 +461,9 @@ const Index = () => {
 
       case 'tracking':
         return <ActiveRides />;
+
+      case 'admin':
+        return hasRole('admin') ? <AdminDashboard /> : null;
 
       case 'profile':
         return <ProfileManagement />;

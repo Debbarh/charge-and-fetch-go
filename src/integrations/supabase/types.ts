@@ -772,6 +772,16 @@ export type Database = {
         Args: { verification_id: string }
         Returns: undefined
       }
+      get_admin_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          monthly_revenue: number
+          pending_verifications: number
+          recent_requests: number
+          recent_transactions: number
+          total_drivers: number
+        }[]
+      }
       get_negotiation_history: {
         Args: { p_offer_id: string }
         Returns: {
@@ -798,6 +808,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      reject_driver_verification: {
+        Args: { rejection_reason: string; verification_id: string }
+        Returns: undefined
       }
     }
     Enums: {
