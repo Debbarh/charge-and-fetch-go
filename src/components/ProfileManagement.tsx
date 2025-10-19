@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Car, Users, Home, Zap, MapPin, Euro, Clock, Star, Plus, Edit3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserProfile {
   name: string;
@@ -62,12 +64,14 @@ interface DriverProfile {
 }
 
 const ProfileManagement = () => {
+  const { user } = useAuth();
   const [activeRole, setActiveRole] = useState<'client' | 'driver' | 'host'>('client');
   const [isDriver, setIsDriver] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [showAddStationDialog, setShowAddStationDialog] = useState(false);
   const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
   const [showDriverRegistrationDialog, setShowDriverRegistrationDialog] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -107,6 +111,98 @@ const ProfileManagement = () => {
     }
   });
 
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+      checkDriverRole();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoadingProfile(true);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (profile) {
+        setUserProfile({
+          name: profile.full_name || '',
+          email: user.email || '',
+          phone: profile.phone || '',
+          rating: 4.9,
+          totalServices: 23,
+          monthlyEarnings: 347
+        });
+
+        if (profile.vehicle_type) {
+          const schedule = profile.availability_schedule as any;
+          setDriverProfile(prev => ({
+            ...prev,
+            name: profile.full_name || '',
+            phone: profile.phone || '',
+            vehicle_type: profile.vehicle_type || '',
+            vehicle_make: profile.vehicle_make || '',
+            vehicle_model: profile.vehicle_model || '',
+            vehicle_year: profile.vehicle_year || new Date().getFullYear(),
+            vehicle_color: profile.vehicle_color || '',
+            vehicle_plate: profile.vehicle_plate || '',
+            bio: profile.bio || '',
+            hourly_rate: profile.hourly_rate || 0,
+            experience_years: profile.experience_years || 0,
+            specialties: (profile.specialties as string[]) || [],
+            availability_schedule: (schedule && typeof schedule === 'object') ? {
+              monday: schedule.monday ?? true,
+              tuesday: schedule.tuesday ?? true,
+              wednesday: schedule.wednesday ?? true,
+              thursday: schedule.thursday ?? true,
+              friday: schedule.friday ?? true,
+              saturday: schedule.saturday ?? true,
+              sunday: schedule.sunday ?? true
+            } : {
+              monday: true,
+              tuesday: true,
+              wednesday: true,
+              thursday: true,
+              friday: true,
+              saturday: true,
+              sunday: true
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement profil:', error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const checkDriverRole = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'chauffeur')
+        .maybeSingle();
+
+      if (data) {
+        setIsDriver(true);
+      }
+    } catch (error) {
+      console.error('Erreur vérification rôle:', error);
+    }
+  };
+
   const [newStation, setNewStation] = useState({
     address: '',
     powerOutput: '',
@@ -133,14 +229,59 @@ const ProfileManagement = () => {
     }
   ]);
 
-  const handleBecomeDriver = (e: React.FormEvent) => {
+  const handleBecomeDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDriver(true);
-    setShowDriverRegistrationDialog(false);
-    toast({
-      title: "Inscription validée !",
-      description: "Vous êtes maintenant chauffeur-valet. Vous pouvez voir les demandes disponibles.",
-    });
+    if (!user) return;
+
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: driverProfile.name,
+          phone: driverProfile.phone,
+          vehicle_type: driverProfile.vehicle_type,
+          vehicle_make: driverProfile.vehicle_make,
+          vehicle_model: driverProfile.vehicle_model,
+          vehicle_year: driverProfile.vehicle_year,
+          vehicle_color: driverProfile.vehicle_color,
+          vehicle_plate: driverProfile.vehicle_plate,
+          bio: driverProfile.bio,
+          hourly_rate: driverProfile.hourly_rate,
+          experience_years: driverProfile.experience_years,
+          specialties: driverProfile.specialties,
+          availability_schedule: driverProfile.availability_schedule
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: user.id,
+          role: 'chauffeur'
+        });
+
+      if (roleError && !roleError.message.includes('duplicate')) {
+        throw roleError;
+      }
+
+      setIsDriver(true);
+      setShowDriverRegistrationDialog(false);
+      toast({
+        title: "Inscription validée !",
+        description: "Vous êtes maintenant chauffeur-valet.",
+      });
+      
+      await loadUserProfile();
+    } catch (error) {
+      console.error('Erreur inscription chauffeur:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de finaliser l'inscription",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleBecomeHost = () => {
