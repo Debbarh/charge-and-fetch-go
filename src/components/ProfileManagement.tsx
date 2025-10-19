@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import NotificationPreferences from './NotificationPreferences';
 
 interface UserProfile {
   name: string;
@@ -1067,6 +1068,13 @@ const ProfileManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Préférences de notifications */}
+      {activeRole === 'client' && (
+        <div className="mt-6">
+          <NotificationPreferences />
+        </div>
+      )}
     </div>
   );
 };
