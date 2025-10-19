@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut, Activity, MessageSquare, Navigation } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,11 +29,13 @@ import MessageNotificationListener from '@/components/MessageNotificationListene
 import ActiveRides from '@/components/ActiveRides';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { ShieldCheck } from 'lucide-react';
+import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile, loading, signOut, hasRole, isAuthenticated } = useAuth();
+  const { pendingCount } = useAdminNotifications(hasRole('admin'));
   const [activeTab, setActiveTab] = useState('map');
   const [clientTab, setClientTab] = useState<'services' | 'offers'>('services');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -553,7 +556,17 @@ const Index = () => {
                     : 'text-muted-foreground hover:text-electric-600'
                 }`}
               >
-                <Icon className={`h-5 w-5 transition-transform duration-200 ${isActive ? 'animate-bounce-soft' : ''}`} />
+                <div className="relative">
+                  <Icon className={`h-5 w-5 transition-transform duration-200 ${isActive ? 'animate-bounce-soft' : ''}`} />
+                  {tab.id === 'admin' && pendingCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]"
+                    >
+                      {pendingCount}
+                    </Badge>
+                  )}
+                </div>
                 <span className="text-xs font-medium">{tab.label}</span>
               </Button>
             );

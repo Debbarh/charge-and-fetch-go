@@ -772,6 +772,14 @@ export type Database = {
         Args: { verification_id: string }
         Returns: undefined
       }
+      count_pending_verifications: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      create_admin_user: {
+        Args: { user_email: string }
+        Returns: undefined
+      }
       get_admin_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
