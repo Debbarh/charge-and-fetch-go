@@ -8,6 +8,7 @@ import ClientRequests from './driver/ClientRequests';
 import MyOffers from './driver/MyOffers';
 import DriverStats from './driver/DriverStats';
 import CounterOfferDialog from './driver/CounterOfferDialog';
+import WalletManagement from './WalletManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -40,7 +41,7 @@ interface ClientRequest {
 }
 
 const DriverService = () => {
-  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network'>('network');
+  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet'>('network');
   const [counterOffer, setCounterOffer] = useState({
     requestId: '',
     newPrice: '',
@@ -268,6 +269,8 @@ const DriverService = () => {
         return <MyOffers offers={myOffers} />;
       case 'network':
         return <NearbyChargersDrivers />;
+      case 'wallet':
+        return <WalletManagement />;
       default:
         return null;
     }

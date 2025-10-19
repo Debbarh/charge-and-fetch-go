@@ -139,6 +139,42 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          driver_id: string
+          id: string
+          last_payout_at: string | null
+          pending_balance: number
+          total_earned: number
+          total_withdrawn: number
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          driver_id: string
+          id?: string
+          last_payout_at?: string | null
+          pending_balance?: number
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          driver_id?: string
+          id?: string
+          last_payout_at?: string | null
+          pending_balance?: number
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -523,6 +559,69 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ride_tracking_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          description: string | null
+          driver_id: string
+          id: string
+          offer_id: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_status: string
+          request_id: string | null
+          transaction_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          description?: string | null
+          driver_id: string
+          id?: string
+          offer_id?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_status?: string
+          request_id?: string | null
+          transaction_type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          driver_id?: string
+          id?: string
+          offer_id?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_status?: string
+          request_id?: string | null
+          transaction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "driver_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "requests"
