@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,8 +16,13 @@ import { useUserLocation } from '@/hooks/useUserLocation';
 import { useChargingStations } from '@/hooks/useChargingStations';
 import { formatDistance } from '@/utils/geoUtils';
 import ProfileManagement from '@/components/ProfileManagement';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user, profile, loading, signOut, hasRole, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('map');
   const [clientTab, setClientTab] = useState<'services' | 'offers'>('services');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -48,10 +54,37 @@ const Index = () => {
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
+  // Rediriger vers la page d'authentification si non connecté
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [loading, isAuthenticated, navigate]);
+
   // Fonction pour rediriger vers l'onglet offres après publication
   const handleRequestPublished = () => {
     setClientTab('offers');
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Déconnexion réussie",
+      description: "À bientôt !",
+    });
+    navigate('/auth');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Adapter les bornes pour l'affichage avec les vraies données
   const nearbyStations = stations.map(station => ({
@@ -449,17 +482,32 @@ const Index = () => {
               <h1 className="text-xl font-bold bg-gradient-to-r from-electric-600 to-blue-600 bg-clip-text text-transparent">
                 ElectricValet
               </h1>
-              <p className="text-sm text-muted-foreground">Recharge collaborative</p>
+              <p className="text-sm text-muted-foreground">
+                {profile?.full_name ? `Bonjour, ${profile.full_name}` : 'Recharge collaborative'}
+              </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-electric-200 text-electric-600 hover:bg-electric-50"
-              onClick={() => setIsBookingOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Réserver
-            </Button>
+            <div className="flex items-center gap-2">
+              {profile?.roles && profile.roles.length > 0 && (
+                <div className="hidden sm:flex gap-1">
+                  {profile.roles.map(role => (
+                    <span
+                      key={role}
+                      className="text-xs px-2 py-1 rounded-full bg-electric-100 text-electric-700"
+                    >
+                      {role === 'chauffeur' ? '🚗 Chauffeur' : role === 'client' ? '👤 Client' : '⚙️ Admin'}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
