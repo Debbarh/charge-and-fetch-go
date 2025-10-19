@@ -10,6 +10,7 @@ import DriverStats from './driver/DriverStats';
 import CounterOfferDialog from './driver/CounterOfferDialog';
 import WalletManagement from './WalletManagement';
 import DriverRatings from './DriverRatings';
+import ActiveRides from './ActiveRides';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -42,7 +43,7 @@ interface ClientRequest {
 }
 
 const DriverService = () => {
-  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet' | 'ratings'>('network');
+  const [activeTab, setActiveTab] = useState<'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet' | 'ratings' | 'active_rides'>('network');
   const [counterOffer, setCounterOffer] = useState({
     requestId: '',
     newPrice: '',
@@ -274,6 +275,8 @@ const DriverService = () => {
         return <WalletManagement />;
       case 'ratings':
         return user ? <DriverRatings driverId={user.id} /> : null;
+      case 'active_rides':
+        return <ActiveRides />;
       default:
         return null;
     }
