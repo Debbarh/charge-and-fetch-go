@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, MapPin, Car, Euro, Clock, Star, Filter, Download, TrendingUp, Users } from 'lucide-react';
+import RatingModal from './RatingModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ interface RequestHistoryItem {
   driver_name?: string;
   driver_rating?: number;
   urgency: 'low' | 'medium' | 'high';
+  offer_id?: string;
 }
 
 const RequestHistory = () => {
@@ -32,6 +34,8 @@ const RequestHistory = () => {
   const [filteredRequests, setFilteredRequests] = useState<RequestHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<RequestHistoryItem | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     completed: 0,
@@ -62,6 +66,8 @@ const RequestHistory = () => {
         .select(`
           *,
           driver_offers!requests_selected_driver_id_fkey(
+            id,
+            driver_id,
             driver_name,
             driver_rating
           )
@@ -86,7 +92,8 @@ const RequestHistory = () => {
           selected_driver_id: req.selected_driver_id,
           driver_name: driverOffer?.driver_name,
           driver_rating: driverOffer?.driver_rating ? parseFloat(driverOffer.driver_rating.toString()) : undefined,
-          urgency: req.urgency
+          urgency: req.urgency,
+          offer_id: driverOffer?.id
         };
       });
 
@@ -185,6 +192,11 @@ const RequestHistory = () => {
     toast.success('Export réussi', {
       description: 'Votre historique a été exporté en CSV'
     });
+  };
+
+  const handleOpenRatingModal = (request: RequestHistoryItem) => {
+    setSelectedRequest(request);
+    setRatingModalOpen(true);
   };
 
   if (loading) {
@@ -328,16 +340,28 @@ const RequestHistory = () => {
                         </div>
 
                         {request.driver_name && (
-                          <div className="flex items-center gap-2 pt-2 border-t">
-                            <Users className="h-4 w-4 text-electric-600" />
-                            <p className="text-sm font-medium">{request.driver_name}</p>
-                            {request.driver_rating && (
-                              <div className="flex items-center gap-1">
-                                <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                                <span className="text-xs text-muted-foreground">
-                                  {request.driver_rating.toFixed(1)}
-                                </span>
-                              </div>
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-electric-600" />
+                              <p className="text-sm font-medium">{request.driver_name}</p>
+                              {request.driver_rating && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                                  <span className="text-xs text-muted-foreground">
+                                    {request.driver_rating.toFixed(1)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {request.status === 'completed' && request.selected_driver_id && request.offer_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenRatingModal(request)}
+                              >
+                                <Star className="h-4 w-4 mr-1" />
+                                Évaluer
+                              </Button>
                             )}
                           </div>
                         )}
@@ -373,6 +397,19 @@ const RequestHistory = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Rating Modal */}
+      {selectedRequest && selectedRequest.selected_driver_id && selectedRequest.offer_id && (
+        <RatingModal
+          open={ratingModalOpen}
+          onOpenChange={setRatingModalOpen}
+          requestId={selectedRequest.id}
+          offerId={selectedRequest.offer_id}
+          driverId={selectedRequest.selected_driver_id}
+          driverName={selectedRequest.driver_name || 'Chauffeur'}
+          onRatingSubmitted={loadHistory}
+        />
       )}
     </div>
   );

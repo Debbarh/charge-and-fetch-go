@@ -1,16 +1,16 @@
 
 import React from 'react';
-import { Users, Wallet } from 'lucide-react';
+import { Users, Wallet, Star } from 'lucide-react';
 
 interface DriverTabsProps {
-  activeTab: 'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet';
-  setActiveTab: (tab: 'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet') => void;
+  activeTab: 'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet' | 'ratings';
+  setActiveTab: (tab: 'available' | 'client_requests' | 'my_offers' | 'network' | 'wallet' | 'ratings') => void;
   myOffersCount: number;
 }
 
 const DriverTabs: React.FC<DriverTabsProps> = ({ activeTab, setActiveTab, myOffersCount }) => {
   return (
-    <div className="grid grid-cols-5 gap-1 bg-gray-100 p-1 rounded-lg">
+    <div className="grid grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg">
       <button
         onClick={() => setActiveTab('available')}
         className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
@@ -62,6 +62,17 @@ const DriverTabs: React.FC<DriverTabsProps> = ({ activeTab, setActiveTab, myOffe
       >
         <Wallet className="h-4 w-4 inline mr-1" />
         Gains
+      </button>
+      <button
+        onClick={() => setActiveTab('ratings')}
+        className={`py-2 px-2 rounded-md text-xs font-medium transition-colors ${
+          activeTab === 'ratings'
+            ? 'bg-white text-electric-600 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <Star className="h-4 w-4 inline mr-1" />
+        Notes
       </button>
     </div>
   );
