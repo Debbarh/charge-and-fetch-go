@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Clock, Eye, Car, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, Car, Calendar, FileText, AlertTriangle } from 'lucide-react';
 import DriverDetails from './DriverDetails';
 
 interface Verification {
@@ -25,6 +25,10 @@ interface Verification {
   rejected_at: string | null;
   rejection_reason: string | null;
   reviewed_by: string | null;
+  driver_license_url: string | null;
+  identity_document_url: string | null;
+  insurance_url: string | null;
+  vehicle_registration_url: string | null;
 }
 
 const KYCManagement = () => {
@@ -130,43 +134,78 @@ const KYCManagement = () => {
     }
   };
 
-  const renderVerificationCard = (verification: Verification) => (
-    <Card key={verification.id} className="p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-3">
-            <Car className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-semibold">
-                {verification.vehicle_make} {verification.vehicle_model}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {verification.vehicle_year} • {verification.vehicle_color} • {verification.vehicle_plate}
-              </p>
-            </div>
-          </div>
+  const getDocumentStatus = (verification: Verification) => {
+    const documents = [
+      verification.driver_license_url,
+      verification.identity_document_url,
+      verification.insurance_url,
+      verification.vehicle_registration_url
+    ];
+    const provided = documents.filter(Boolean).length;
+    const total = documents.length;
+    return { provided, total, complete: provided === total };
+  };
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date(verification.created_at).toLocaleDateString('fr-FR')}</span>
+  const renderVerificationCard = (verification: Verification) => {
+    const docStatus = getDocumentStatus(verification);
+    
+    return (
+      <Card key={verification.id} className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-3">
+              <Car className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="font-semibold">
+                  {verification.vehicle_make} {verification.vehicle_model}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {verification.vehicle_year} • {verification.vehicle_color} • {verification.vehicle_plate}
+                </p>
+              </div>
             </div>
-            <span>{verification.experience_years} ans d'expérience</span>
-            {verification.hourly_rate && (
-              <span className="font-semibold text-primary">{verification.hourly_rate} €/h</span>
+
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date(verification.created_at).toLocaleDateString('fr-FR')}</span>
+              </div>
+              <span>{verification.experience_years} ans d'expérience</span>
+              {verification.hourly_rate && (
+                <span className="font-semibold text-primary">{verification.hourly_rate} €/h</span>
+              )}
+            </div>
+
+            {/* Document status indicator */}
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Documents: {docStatus.provided}/{docStatus.total}
+              </span>
+              {!docStatus.complete && (
+                <Badge variant="destructive" className="text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Incomplet
+                </Badge>
+              )}
+              {docStatus.complete && (
+                <Badge variant="default" className="text-xs">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Complet
+                </Badge>
+              )}
+            </div>
+
+            {verification.rejection_reason && (
+              <div className="mt-2 p-2 bg-destructive/10 rounded-md">
+                <p className="text-sm text-destructive">
+                  <strong>Raison du rejet:</strong> {verification.rejection_reason}
+                </p>
+              </div>
             )}
           </div>
 
-          {verification.rejection_reason && (
-            <div className="mt-2 p-2 bg-destructive/10 rounded-md">
-              <p className="text-sm text-destructive">
-                <strong>Raison du rejet:</strong> {verification.rejection_reason}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col items-end gap-3">
+          <div className="flex flex-col items-end gap-3">
           <Badge variant={
             verification.status === 'pending' ? 'default' :
             verification.status === 'approved' ? 'default' : 'destructive'
@@ -196,6 +235,8 @@ const KYCManagement = () => {
                 <Button
                   size="sm"
                   onClick={() => handleApprove(verification.id)}
+                  disabled={!docStatus.complete}
+                  title={!docStatus.complete ? 'Documents manquants' : ''}
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
                   Approuver
@@ -216,10 +257,11 @@ const KYCManagement = () => {
               </>
             )}
           </div>
+          </div>
         </div>
-      </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
