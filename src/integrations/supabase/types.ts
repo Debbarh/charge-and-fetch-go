@@ -414,6 +414,71 @@ export type Database = {
         }
         Relationships: []
       }
+      ride_tracking: {
+        Row: {
+          arrived_at_destination: string | null
+          arrived_at_pickup: string | null
+          completed_at: string | null
+          created_at: string
+          destination_eta_minutes: number | null
+          distance_to_destination_km: number | null
+          distance_to_pickup_km: number | null
+          driver_id: string
+          driver_latitude: number | null
+          driver_longitude: number | null
+          id: string
+          pickup_eta_minutes: number | null
+          request_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arrived_at_destination?: string | null
+          arrived_at_pickup?: string | null
+          completed_at?: string | null
+          created_at?: string
+          destination_eta_minutes?: number | null
+          distance_to_destination_km?: number | null
+          distance_to_pickup_km?: number | null
+          driver_id: string
+          driver_latitude?: number | null
+          driver_longitude?: number | null
+          id?: string
+          pickup_eta_minutes?: number | null
+          request_id: string
+          started_at?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          arrived_at_destination?: string | null
+          arrived_at_pickup?: string | null
+          completed_at?: string | null
+          created_at?: string
+          destination_eta_minutes?: number | null
+          distance_to_destination_km?: number | null
+          distance_to_pickup_km?: number | null
+          driver_id?: string
+          driver_latitude?: number | null
+          driver_longitude?: number | null
+          id?: string
+          pickup_eta_minutes?: number | null
+          request_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_tracking_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
