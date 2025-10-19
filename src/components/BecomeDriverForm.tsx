@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Upload, Check, AlertCircle, Clock } from 'lucide-react';
+import { Car, Upload, Check, AlertCircle, Clock, FileText, X, Download } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +18,27 @@ interface VerificationStatus {
   created_at: string;
 }
 
+interface DocumentUpload {
+  file: File | null;
+  preview: string | null;
+  uploading: boolean;
+}
+
 const BecomeDriverForm = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [verification, setVerification] = useState<VerificationStatus | null>(null);
+  const [documents, setDocuments] = useState<{
+    driver_license: DocumentUpload;
+    identity_document: DocumentUpload;
+    insurance: DocumentUpload;
+    vehicle_registration: DocumentUpload;
+  }>({
+    driver_license: { file: null, preview: null, uploading: false },
+    identity_document: { file: null, preview: null, uploading: false },
+    insurance: { file: null, preview: null, uploading: false },
+    vehicle_registration: { file: null, preview: null, uploading: false },
+  });
   const [formData, setFormData] = useState({
     vehicle_make: '',
     vehicle_model: '',
@@ -62,6 +79,93 @@ const BecomeDriverForm = () => {
     }
   };
 
+  const handleFileChange = (docType: keyof typeof documents, file: File | null) => {
+    if (!file) {
+      setDocuments(prev => ({
+        ...prev,
+        [docType]: { file: null, preview: null, uploading: false }
+      }));
+      return;
+    }
+
+    // Validation
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!validTypes.includes(file.type)) {
+      toast.error('Format invalide', {
+        description: 'Seuls les fichiers PDF, JPG et PNG sont acceptés.'
+      });
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast.error('Fichier trop volumineux', {
+        description: 'La taille maximale est de 5 MB.'
+      });
+      return;
+    }
+
+    // Créer un aperçu
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setDocuments(prev => ({
+        ...prev,
+        [docType]: { 
+          file, 
+          preview: reader.result as string, 
+          uploading: false 
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadDocument = async (docType: keyof typeof documents): Promise<string | null> => {
+    const doc = documents[docType];
+    if (!doc.file || !user) return null;
+
+    setDocuments(prev => ({
+      ...prev,
+      [docType]: { ...prev[docType], uploading: true }
+    }));
+
+    try {
+      const fileExt = doc.file.name.split('.').pop();
+      const fileName = `${user.id}/${docType}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('driver-documents')
+        .upload(fileName, doc.file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('driver-documents')
+        .getPublicUrl(fileName);
+
+      setDocuments(prev => ({
+        ...prev,
+        [docType]: { ...prev[docType], uploading: false }
+      }));
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      setDocuments(prev => ({
+        ...prev,
+        [docType]: { ...prev[docType], uploading: false }
+      }));
+      toast.error('Erreur lors de l\'upload', {
+        description: 'Impossible de télécharger le document.'
+      });
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -72,15 +176,39 @@ const BecomeDriverForm = () => {
       return;
     }
 
+    // Vérifier que tous les documents sont présents
+    if (!documents.driver_license.file || !documents.identity_document.file || 
+        !documents.insurance.file || !documents.vehicle_registration.file) {
+      toast.error('Documents manquants', {
+        description: 'Tous les documents sont obligatoires pour soumettre votre demande.'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Upload documents first
+      toast.info('Upload des documents en cours...');
+      const driver_license_url = await uploadDocument('driver_license');
+      const identity_document_url = await uploadDocument('identity_document');
+      const insurance_url = await uploadDocument('insurance');
+      const vehicle_registration_url = await uploadDocument('vehicle_registration');
+
+      if (!driver_license_url || !identity_document_url || !insurance_url || !vehicle_registration_url) {
+        throw new Error('Erreur lors de l\'upload des documents');
+      }
+
       const { error } = await supabase
         .from('driver_verifications')
         .insert({
           user_id: user.id,
           ...formData,
-          status: 'pending'
+          status: 'pending',
+          driver_license_url,
+          identity_document_url,
+          insurance_url,
+          vehicle_registration_url
         });
 
       if (error) throw error;
@@ -287,15 +415,160 @@ const BecomeDriverForm = () => {
             </div>
           </div>
 
+          {/* Documents KYC */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5 text-electric-600" />
+              Documents obligatoires (KYC)
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Conformément à la réglementation française, vous devez fournir les documents suivants (PDF, JPG ou PNG, max 5MB)
+            </p>
+
+            <div className="grid gap-4">
+              {/* Permis de conduire */}
+              <div className="space-y-2">
+                <Label htmlFor="driver_license" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Permis de conduire <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="driver_license"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('driver_license', e.target.files?.[0] || null)}
+                    disabled={loading}
+                  />
+                  {documents.driver_license.file && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleFileChange('driver_license', null)}
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {documents.driver_license.file && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ {documents.driver_license.file.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Pièce d'identité */}
+              <div className="space-y-2">
+                <Label htmlFor="identity_document" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Carte d'identité ou Passeport <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="identity_document"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('identity_document', e.target.files?.[0] || null)}
+                    disabled={loading}
+                  />
+                  {documents.identity_document.file && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleFileChange('identity_document', null)}
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {documents.identity_document.file && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ {documents.identity_document.file.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Assurance */}
+              <div className="space-y-2">
+                <Label htmlFor="insurance" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Attestation d'assurance <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="insurance"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('insurance', e.target.files?.[0] || null)}
+                    disabled={loading}
+                  />
+                  {documents.insurance.file && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleFileChange('insurance', null)}
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {documents.insurance.file && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ {documents.insurance.file.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Carte grise */}
+              <div className="space-y-2">
+                <Label htmlFor="vehicle_registration" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Carte grise <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="vehicle_registration"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('vehicle_registration', e.target.files?.[0] || null)}
+                    disabled={loading}
+                  />
+                  {documents.vehicle_registration.file && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleFileChange('vehicle_registration', null)}
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {documents.vehicle_registration.file && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ {documents.vehicle_registration.file.name}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Informations importantes */}
           <Alert>
             <Check className="h-4 w-4" />
             <AlertDescription>
               <strong>Prochaines étapes :</strong>
               <ul className="list-disc list-inside mt-2 text-sm space-y-1">
-                <li>Soumission de votre demande</li>
-                <li>Vérification par notre équipe (24-48h)</li>
-                <li>Notification de validation ou demande de documents supplémentaires</li>
+                <li>Soumission de votre demande avec documents</li>
+                <li>Vérification KYC par notre équipe (24-48h)</li>
+                <li>Notification de validation</li>
                 <li>Activation de votre compte chauffeur</li>
               </ul>
             </AlertDescription>

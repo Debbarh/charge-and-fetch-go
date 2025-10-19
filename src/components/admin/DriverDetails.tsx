@@ -2,7 +2,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Car, Phone, Calendar, Star, Award } from 'lucide-react';
+import { Car, Phone, Calendar, Star, Award, FileText, Download, ExternalLink } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 interface DriverDetailsProps {
   verification: any;
@@ -22,6 +23,31 @@ const DriverDetails = ({ verification, open, onClose, onApprove, onReject }: Dri
     }
   };
 
+  const documents = [
+    { 
+      label: 'Permis de conduire', 
+      url: verification.driver_license_url,
+      required: true 
+    },
+    { 
+      label: "Pièce d'identité", 
+      url: verification.identity_document_url,
+      required: true 
+    },
+    { 
+      label: "Attestation d'assurance", 
+      url: verification.insurance_url,
+      required: true 
+    },
+    { 
+      label: 'Carte grise', 
+      url: verification.vehicle_registration_url,
+      required: true 
+    },
+  ];
+
+  const missingDocs = documents.filter(doc => doc.required && !doc.url).length;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -40,6 +66,66 @@ const DriverDetails = ({ verification, open, onClose, onApprove, onReject }: Dri
               {verification.status === 'pending' ? 'En attente' :
                verification.status === 'approved' ? 'Approuvé' : 'Rejeté'}
             </Badge>
+          </div>
+
+          <Separator />
+
+          {/* Documents KYC */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-semibold">Documents KYC</h3>
+              </div>
+              {missingDocs > 0 && (
+                <Badge variant="destructive">
+                  {missingDocs} document{missingDocs > 1 ? 's' : ''} manquant{missingDocs > 1 ? 's' : ''}
+                </Badge>
+              )}
+              {missingDocs === 0 && (
+                <Badge variant="default">Tous les documents fournis</Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-3 ml-7">
+              {documents.map((doc, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{doc.label}</span>
+                      {doc.required && <Badge variant="outline" className="text-xs">Obligatoire</Badge>}
+                    </div>
+                    {doc.url ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(doc.url, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Voir
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = doc.url!;
+                            link.download = `${doc.label}.pdf`;
+                            link.click();
+                          }}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Télécharger
+                        </Button>
+                      </div>
+                    ) : (
+                      <Badge variant="destructive">Non fourni</Badge>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
 
           <Separator />
@@ -158,10 +244,21 @@ const DriverDetails = ({ verification, open, onClose, onApprove, onReject }: Dri
           {verification.status === 'pending' && (
             <>
               <Separator />
+              {missingDocs > 0 && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="text-sm text-destructive font-medium">
+                    ⚠️ Attention : {missingDocs} document{missingDocs > 1 ? 's' : ''} obligatoire{missingDocs > 1 ? 's' : ''} manquant{missingDocs > 1 ? 's' : ''}.
+                  </p>
+                  <p className="text-xs text-destructive/80 mt-1">
+                    La vérification ne peut pas être approuvée sans tous les documents requis.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <Button 
                   onClick={() => onApprove(verification.id)}
                   className="flex-1"
+                  disabled={missingDocs > 0}
                 >
                   Approuver
                 </Button>
