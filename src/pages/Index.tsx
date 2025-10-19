@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut, Activity } from 'lucide-react';
+import { MapPin, Zap, Car, User, Search, Plus, Clock, Star, Users, Filter, X, Heart, LogOut, Activity, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import TopDrivers from '@/components/TopDrivers';
 import NotificationCenter from '@/components/NotificationCenter';
 import ActivityDashboard from '@/components/ActivityDashboard';
+import MessagesList from '@/components/MessagesList';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ const Index = () => {
     { id: 'map', label: 'Carte', icon: MapPin },
     { id: 'valet', label: 'Demande', icon: Car },
     { id: 'driver', label: 'Chauffeur', icon: Users },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'activity', label: 'Activité', icon: Activity },
     { id: 'bookings', label: 'Historique', icon: Clock },
     { id: 'profile', label: 'Profil', icon: User },
@@ -466,6 +468,9 @@ const Index = () => {
 
       case 'activity':
         return <ActivityDashboard />;
+
+      case 'messages':
+        return <MessagesList />;
 
       case 'profile':
         return <ProfileManagement />;
