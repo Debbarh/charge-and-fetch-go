@@ -23,6 +23,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import ActivityDashboard from '@/components/ActivityDashboard';
 import MessagesList from '@/components/MessagesList';
 import RideTracker from '@/components/RideTracker';
+import RequestHistory from '@/components/RequestHistory';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -445,28 +446,7 @@ const Index = () => {
         return <DriverService />;
 
       case 'bookings':
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Historique</h2>
-            <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-electric-800">Valet Express en cours</h3>
-                    <p className="text-electric-600 text-sm mt-1">Récupération prévue dans 15 min</p>
-                  </div>
-                  <div className="animate-pulse-slow">
-                    <Car className="h-8 w-8 text-electric-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Aucune autre activité récente</p>
-            </div>
-          </div>
-        );
+        return <RequestHistory />;
 
       case 'activity':
         return <ActivityDashboard />;
