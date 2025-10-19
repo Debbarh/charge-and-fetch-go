@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import NegotiationNotifications from './NegotiationNotifications';
 
 interface NegotiationHistory {
   id: string;
@@ -79,7 +80,7 @@ const ClientOffers = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Charger les données depuis Supabase
+  // Charger les données depuis Supabase avec négociations
   useEffect(() => {
     if (!user) return;
 
@@ -121,26 +122,44 @@ const ClientOffers = () => {
           if (offersError) throw offersError;
 
           if (offers) {
-            setReceivedOffers(offers.map(offer => ({
-              id: offer.id,
-              driverId: offer.driver_id,
-              driverName: offer.driver_name,
-              driverRating: parseFloat(offer.driver_rating?.toString() || '0'),
-              driverTotalRides: offer.driver_total_rides || 0,
-              driverVehicle: offer.driver_vehicle,
-              driverExperience: offer.driver_experience || '',
-              originalRequestId: offer.request_id,
-              proposedPrice: offer.proposed_price.toString(),
-              estimatedDuration: offer.estimated_duration,
-              message: offer.message || '',
-              driverPhone: offer.driver_phone,
-              status: offer.status as any,
-              receivedAt: offer.created_at,
-              lastActivity: offer.last_activity,
-              negotiationHistory: [],
-              responseTime: offer.response_time || '< 5 min',
-              availability: offer.availability || 'Immédiate'
-            })));
+            // Charger l'historique de négociation pour chaque offre
+            const offersWithHistory = await Promise.all(
+              offers.map(async (offer) => {
+                const { data: negotiations } = await supabase
+                  .rpc('get_negotiation_history', { p_offer_id: offer.id });
+
+                return {
+                  id: offer.id,
+                  driverId: offer.driver_id,
+                  driverName: offer.driver_name,
+                  driverRating: parseFloat(offer.driver_rating?.toString() || '0'),
+                  driverTotalRides: offer.driver_total_rides || 0,
+                  driverVehicle: offer.driver_vehicle,
+                  driverExperience: offer.driver_experience || '',
+                  originalRequestId: offer.request_id,
+                  proposedPrice: offer.proposed_price.toString(),
+                  estimatedDuration: offer.estimated_duration,
+                  message: offer.message || '',
+                  driverPhone: offer.driver_phone,
+                  status: offer.status as any,
+                  receivedAt: offer.created_at,
+                  lastActivity: offer.last_activity,
+                  negotiationHistory: (negotiations || []).map((neg: any) => ({
+                    id: neg.id,
+                    timestamp: neg.created_at,
+                    from: neg.from_role,
+                    price: neg.proposed_price.toString(),
+                    duration: neg.proposed_duration,
+                    message: neg.message,
+                    status: neg.status
+                  })),
+                  responseTime: offer.response_time || '< 5 min',
+                  availability: offer.availability || 'Immédiate'
+                };
+              })
+            );
+
+            setReceivedOffers(offersWithHistory);
           }
         }
       } catch (error: any) {
@@ -157,8 +176,8 @@ const ClientOffers = () => {
 
     loadData();
 
-    // Écoute en temps réel des nouvelles offres
-    const channel = supabase
+    // Écoute en temps réel des nouvelles offres ET négociations
+    const offersChannel = supabase
       .channel('driver_offers_changes')
       .on(
         'postgres_changes',
@@ -168,13 +187,29 @@ const ClientOffers = () => {
           table: 'driver_offers'
         },
         () => {
-          loadData(); // Recharger quand une offre change
+          loadData();
+        }
+      )
+      .subscribe();
+
+    const negotiationsChannel = supabase
+      .channel('negotiations_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'negotiations'
+        },
+        () => {
+          loadData();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(offersChannel);
+      supabase.removeChannel(negotiationsChannel);
     };
   }, [user, toast]);
 
@@ -251,40 +286,51 @@ const ClientOffers = () => {
     setShowCounterOfferDialog(true);
   };
 
-  const submitCounterOffer = () => {
-    if (!selectedOffer) return;
+  const submitCounterOffer = async () => {
+    if (!selectedOffer || !user) return;
 
-    const newNegotiation: NegotiationHistory = {
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      from: 'client',
-      price: counterOffer.newPrice,
-      message: counterOffer.message,
-      status: 'pending'
-    };
+    try {
+      // Créer une entrée dans la table negotiations
+      const { error } = await supabase
+        .from('negotiations')
+        .insert({
+          offer_id: selectedOffer.id,
+          from_user_id: user.id,
+          from_role: 'client',
+          proposed_price: parseFloat(counterOffer.newPrice),
+          message: counterOffer.message,
+          status: 'pending'
+        });
 
-    const updatedOffers = receivedOffers.map(offer => 
-      offer.id === selectedOffer.id 
-        ? { 
-            ...offer, 
-            status: 'negotiating' as const,
-            lastActivity: new Date().toISOString(),
-            negotiationHistory: [...(offer.negotiationHistory || []), newNegotiation]
-          }
-        : offer
-    );
+      if (error) throw error;
 
-    setReceivedOffers(updatedOffers);
-    localStorage.setItem('receivedOffers', JSON.stringify(updatedOffers));
+      // Mettre à jour le statut de l'offre
+      const { error: updateError } = await supabase
+        .from('driver_offers')
+        .update({ 
+          status: 'negotiating',
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', selectedOffer.id);
 
-    toast({
-      title: "Contre-proposition envoyée !",
-      description: `Votre nouvelle offre de ${counterOffer.newPrice}€ a été envoyée à ${selectedOffer?.driverName}.`,
-    });
+      if (updateError) throw updateError;
 
-    setShowCounterOfferDialog(false);
-    setSelectedOffer(null);
-    setCounterOffer({ newPrice: '', message: '' });
+      toast({
+        title: "Contre-proposition envoyée !",
+        description: `Votre nouvelle offre de ${counterOffer.newPrice}€ a été envoyée à ${selectedOffer?.driverName}.`,
+      });
+
+      setShowCounterOfferDialog(false);
+      setSelectedOffer(null);
+      setCounterOffer({ newPrice: '', message: '' });
+    } catch (error: any) {
+      console.error('Erreur contre-offre:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer la contre-proposition.",
+        variant: "destructive"
+      });
+    }
   };
 
   const openNegotiationHistory = (offer: DriverOffer) => {
@@ -400,6 +446,9 @@ const ClientOffers = () => {
         <h2 className="text-2xl font-bold text-foreground mb-2">Faire une proposition</h2>
         <p className="text-muted-foreground">Gérez les propositions des chauffeurs</p>
       </div>
+
+      {/* Notifications de négociations */}
+      <NegotiationNotifications />
 
       {/* Ma demande active */}
       <Card className="bg-gradient-to-r from-electric-50 to-blue-50 border-electric-200">
