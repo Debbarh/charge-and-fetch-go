@@ -85,6 +85,60 @@ export type Database = {
           },
         ]
       }
+      driver_stats: {
+        Row: {
+          average_rating: number | null
+          average_response_time_minutes: number | null
+          avg_communication: number | null
+          avg_professionalism: number | null
+          avg_punctuality: number | null
+          avg_vehicle_condition: number | null
+          cancelled_rides: number
+          completed_rides: number
+          created_at: string
+          driver_id: string
+          last_active_at: string | null
+          total_ratings: number
+          total_revenue: number | null
+          total_rides: number
+          updated_at: string
+        }
+        Insert: {
+          average_rating?: number | null
+          average_response_time_minutes?: number | null
+          avg_communication?: number | null
+          avg_professionalism?: number | null
+          avg_punctuality?: number | null
+          avg_vehicle_condition?: number | null
+          cancelled_rides?: number
+          completed_rides?: number
+          created_at?: string
+          driver_id: string
+          last_active_at?: string | null
+          total_ratings?: number
+          total_revenue?: number | null
+          total_rides?: number
+          updated_at?: string
+        }
+        Update: {
+          average_rating?: number | null
+          average_response_time_minutes?: number | null
+          avg_communication?: number | null
+          avg_professionalism?: number | null
+          avg_punctuality?: number | null
+          avg_vehicle_condition?: number | null
+          cancelled_rides?: number
+          completed_rides?: number
+          created_at?: string
+          driver_id?: string
+          last_active_at?: string | null
+          total_ratings?: number
+          total_revenue?: number | null
+          total_rides?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       negotiations: {
         Row: {
           created_at: string
@@ -155,6 +209,69 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      ratings: {
+        Row: {
+          client_id: string
+          comment: string | null
+          communication_rating: number | null
+          created_at: string
+          driver_id: string
+          id: string
+          offer_id: string
+          overall_rating: number
+          professionalism_rating: number | null
+          punctuality_rating: number | null
+          request_id: string
+          updated_at: string
+          vehicle_condition_rating: number | null
+        }
+        Insert: {
+          client_id: string
+          comment?: string | null
+          communication_rating?: number | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          offer_id: string
+          overall_rating: number
+          professionalism_rating?: number | null
+          punctuality_rating?: number | null
+          request_id: string
+          updated_at?: string
+          vehicle_condition_rating?: number | null
+        }
+        Update: {
+          client_id?: string
+          comment?: string | null
+          communication_rating?: number | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          offer_id?: string
+          overall_rating?: number
+          professionalism_rating?: number | null
+          punctuality_rating?: number | null
+          request_id?: string
+          updated_at?: string
+          vehicle_condition_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "driver_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       requests: {
         Row: {
@@ -233,7 +350,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      top_drivers: {
+        Row: {
+          average_rating: number | null
+          avg_communication: number | null
+          avg_professionalism: number | null
+          avg_punctuality: number | null
+          avg_vehicle_condition: number | null
+          completed_rides: number | null
+          driver_id: string | null
+          driver_name: string | null
+          total_ratings: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_negotiation_history: {
