@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientRequestFormProps {
   onRequestPublished?: () => void;
@@ -24,78 +26,77 @@ const ClientRequestForm = ({ onRequestPublished }: ClientRequestFormProps) => {
     notes: '',
     contactPhone: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Stocker la demande dans localStorage pour simulation
-    const newRequest = {
-      id: Date.now(),
-      ...requestForm,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    
-    localStorage.setItem('activeClientRequest', JSON.stringify(newRequest));
-    
-    // Simuler des offres qui arrivent après la publication
-    setTimeout(() => {
-      const simulatedOffers = [
-        {
-          id: Date.now() + 1,
-          driverId: 201,
-          driverName: "Marc D.",
-          driverRating: 4.8,
-          driverVehicle: "Renault Clio",
-          originalRequestId: newRequest.id,
-          proposedPrice: requestForm.proposedPrice,
-          estimatedDuration: requestForm.estimatedDuration || "3h",
-          message: "Je peux récupérer votre véhicule dans 20 minutes. J'ai l'habitude des véhicules électriques.",
-          driverPhone: "+33 6 12 34 56 78",
-          status: 'pending',
-          receivedAt: new Date().toISOString()
-        },
-        {
-          id: Date.now() + 2,
-          driverId: 202,
-          driverName: "Sophie L.",
-          driverRating: 4.9,
-          driverVehicle: "Peugeot 208",
-          originalRequestId: newRequest.id,
-          proposedPrice: (parseInt(requestForm.proposedPrice) - 5).toString(),
-          estimatedDuration: "4h",
-          message: "Je propose un prix légèrement inférieur et j'inclus un lavage gratuit !",
-          driverPhone: "+33 6 98 76 54 32",
-          status: 'pending',
-          receivedAt: new Date(Date.now() + 300000).toISOString() // 5 min plus tard
-        }
-      ];
-      
-      localStorage.setItem('receivedOffers', JSON.stringify(simulatedOffers));
-    }, 1000);
+    if (!user) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour publier une demande.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    toast({
-      title: "Demande publiée !",
-      description: "Votre demande a été envoyée aux chauffeurs disponibles. Vous recevrez des offres bientôt.",
-    });
+    setIsSubmitting(true);
 
-    // Reset form
-    setRequestForm({
-      pickupAddress: '',
-      destinationAddress: '',
-      vehicleModel: '',
-      urgency: '',
-      estimatedDuration: '',
-      proposedPrice: '',
-      batteryLevel: '',
-      notes: '',
-      contactPhone: ''
-    });
+    try {
+      // Insérer la demande dans Supabase
+      const { data: newRequest, error } = await supabase
+        .from('requests')
+        .insert({
+          user_id: user.id,
+          pickup_address: requestForm.pickupAddress,
+          destination_address: requestForm.destinationAddress || null,
+          vehicle_model: requestForm.vehicleModel,
+          urgency: requestForm.urgency as 'low' | 'medium' | 'high',
+          estimated_duration: requestForm.estimatedDuration || null,
+          proposed_price: parseFloat(requestForm.proposedPrice),
+          battery_level: parseInt(requestForm.batteryLevel),
+          notes: requestForm.notes || null,
+          contact_phone: requestForm.contactPhone,
+          status: 'active'
+        })
+        .select()
+        .single();
 
-    // Rediriger vers l'onglet des offres
-    if (onRequestPublished) {
-      onRequestPublished();
+      if (error) throw error;
+
+      toast({
+        title: "Demande publiée !",
+        description: "Votre demande a été envoyée aux chauffeurs disponibles. Vous recevrez des offres bientôt.",
+      });
+
+      // Reset form
+      setRequestForm({
+        pickupAddress: '',
+        destinationAddress: '',
+        vehicleModel: '',
+        urgency: '',
+        estimatedDuration: '',
+        proposedPrice: '',
+        batteryLevel: '',
+        notes: '',
+        contactPhone: ''
+      });
+
+      // Rediriger vers l'onglet des offres
+      if (onRequestPublished) {
+        onRequestPublished();
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de la publication:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de publier la demande.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -264,11 +265,17 @@ const ClientRequestForm = ({ onRequestPublished }: ClientRequestFormProps) => {
 
             <Button 
               type="submit" 
+              disabled={isSubmitting || !user}
               className="w-full bg-gradient-to-r from-electric-500 to-electric-600 hover:from-electric-600 hover:to-electric-700"
             >
               <Send className="h-4 w-4 mr-2" />
-              Publier ma demande
+              {isSubmitting ? 'Publication...' : 'Publier ma demande'}
             </Button>
+            {!user && (
+              <p className="text-sm text-red-600 text-center mt-2">
+                Vous devez être connecté pour publier une demande
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>

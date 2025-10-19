@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      driver_offers: {
+        Row: {
+          availability: string | null
+          created_at: string
+          driver_experience: string | null
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          driver_rating: number | null
+          driver_total_rides: number | null
+          driver_vehicle: string
+          estimated_duration: string
+          id: string
+          last_activity: string
+          message: string | null
+          proposed_price: number
+          request_id: string
+          response_time: string | null
+          status: Database["public"]["Enums"]["offer_status"]
+          updated_at: string
+        }
+        Insert: {
+          availability?: string | null
+          created_at?: string
+          driver_experience?: string | null
+          driver_id: string
+          driver_name: string
+          driver_phone: string
+          driver_rating?: number | null
+          driver_total_rides?: number | null
+          driver_vehicle: string
+          estimated_duration: string
+          id?: string
+          last_activity?: string
+          message?: string | null
+          proposed_price: number
+          request_id: string
+          response_time?: string | null
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+        }
+        Update: {
+          availability?: string | null
+          created_at?: string
+          driver_experience?: string | null
+          driver_id?: string
+          driver_name?: string
+          driver_phone?: string
+          driver_rating?: number | null
+          driver_total_rides?: number | null
+          driver_vehicle?: string
+          estimated_duration?: string
+          id?: string
+          last_activity?: string
+          message?: string | null
+          proposed_price?: number
+          request_id?: string
+          response_time?: string | null
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_offers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -35,6 +106,60 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      requests: {
+        Row: {
+          battery_level: number
+          contact_phone: string
+          created_at: string
+          destination_address: string | null
+          estimated_duration: string | null
+          id: string
+          notes: string | null
+          pickup_address: string
+          proposed_price: number
+          selected_driver_id: string | null
+          status: Database["public"]["Enums"]["request_status"]
+          updated_at: string
+          urgency: Database["public"]["Enums"]["urgency_level"]
+          user_id: string
+          vehicle_model: string
+        }
+        Insert: {
+          battery_level: number
+          contact_phone: string
+          created_at?: string
+          destination_address?: string | null
+          estimated_duration?: string | null
+          id?: string
+          notes?: string | null
+          pickup_address: string
+          proposed_price: number
+          selected_driver_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          urgency: Database["public"]["Enums"]["urgency_level"]
+          user_id: string
+          vehicle_model: string
+        }
+        Update: {
+          battery_level?: number
+          contact_phone?: string
+          created_at?: string
+          destination_address?: string | null
+          estimated_duration?: string | null
+          id?: string
+          notes?: string | null
+          pickup_address?: string
+          proposed_price?: number
+          selected_driver_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"]
+          user_id?: string
+          vehicle_model?: string
         }
         Relationships: []
       }
@@ -80,6 +205,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "chauffeur" | "client"
+      offer_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "counter_offered"
+        | "negotiating"
+        | "selected"
+        | "completed"
+      request_status: "active" | "driver_selected" | "completed" | "cancelled"
+      urgency_level: "low" | "medium" | "high"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -208,6 +343,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "chauffeur", "client"],
+      offer_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "counter_offered",
+        "negotiating",
+        "selected",
+        "completed",
+      ],
+      request_status: ["active", "driver_selected", "completed", "cancelled"],
+      urgency_level: ["low", "medium", "high"],
     },
   },
 } as const
