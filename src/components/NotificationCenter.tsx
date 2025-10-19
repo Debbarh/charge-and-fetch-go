@@ -13,12 +13,12 @@ import { fr } from 'date-fns/locale';
 
 interface Notification {
   id: string;
-  type: 'new_offer' | 'negotiation' | 'status_change' | 'rating' | 'request_selected';
+  type: string;
   title: string;
   message: string;
   read: boolean;
   created_at: string;
-  data?: any;
+  data: any;
 }
 
 const NotificationCenter = () => {
@@ -37,82 +37,18 @@ const NotificationCenter = () => {
   const loadNotifications = async () => {
     if (!user) return;
 
-    const notifs: Notification[] = [];
-
     try {
-      // Check for new offers on user's requests
-      const { data: userRole } = await supabase
-        .from('user_roles')
-        .select('role')
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-      if (!userRole || userRole.role !== 'chauffeur') {
-        const { data: requests } = await supabase
-          .from('requests')
-          .select('id, pickup_address, created_at')
-          .eq('user_id', user.id)
-          .eq('status', 'active');
+      if (error) throw error;
 
-        if (requests) {
-          for (const request of requests) {
-            const { data: offers } = await supabase
-              .from('driver_offers')
-              .select('*, created_at')
-              .eq('request_id', request.id)
-              .order('created_at', { ascending: false })
-              .limit(5);
-
-            offers?.forEach(offer => {
-              notifs.push({
-                id: `offer-${offer.id}`,
-                type: 'new_offer',
-                title: 'Nouvelle offre reçue',
-                message: `${offer.driver_name} a proposé ${offer.proposed_price}€ pour ${request.pickup_address}`,
-                read: false,
-                created_at: offer.created_at,
-                data: { offerId: offer.id, requestId: request.id }
-              });
-            });
-          }
-        }
-      }
-
-      // Check for new negotiations
-      const { data: offers } = await supabase
-        .from('driver_offers')
-        .select('id, request_id, driver_id')
-        .eq('driver_id', user.id);
-
-      if (offers) {
-        for (const offer of offers) {
-          const { data: negotiations } = await supabase
-            .from('negotiations')
-            .select('*, created_at')
-            .eq('offer_id', offer.id)
-            .order('created_at', { ascending: false })
-            .limit(3);
-
-          negotiations?.forEach(nego => {
-            if (nego.from_user_id !== user.id) {
-              notifs.push({
-                id: `nego-${nego.id}`,
-                type: 'negotiation',
-                title: 'Nouvelle négociation',
-                message: `Contre-offre: ${nego.proposed_price}€ - ${nego.message}`,
-                read: false,
-                created_at: nego.created_at,
-                data: { negotiationId: nego.id, offerId: offer.id }
-              });
-            }
-          });
-        }
-      }
-
-      // Sort by date and limit
-      notifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setNotifications(notifs.slice(0, 20));
-      setUnreadCount(notifs.filter(n => !n.read).length);
+      setNotifications(data || []);
+      setUnreadCount((data || []).filter(n => !n.read).length);
     } catch (error) {
       console.error('Erreur chargement notifications:', error);
     }
@@ -121,113 +57,39 @@ const NotificationCenter = () => {
   const subscribeToRealtime = () => {
     if (!user) return;
 
-    // Subscribe to new offers
-    const offersChannel = supabase
-      .channel('new-offers')
+    const channel = supabase
+      .channel('notifications-realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'driver_offers'
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
         },
-        async (payload) => {
-          const offer = payload.new as any;
+        (payload) => {
+          const newNotif = payload.new as Notification;
           
-          // Check if this offer is for user's request
-          const { data: request } = await supabase
-            .from('requests')
-            .select('pickup_address')
-            .eq('id', offer.request_id)
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (request) {
-            const newNotif: Notification = {
-              id: `offer-${offer.id}`,
-              type: 'new_offer',
-              title: 'Nouvelle offre reçue',
-              message: `${offer.driver_name} a proposé ${offer.proposed_price}€ pour ${request.pickup_address}`,
-              read: false,
-              created_at: offer.created_at,
-              data: { offerId: offer.id, requestId: offer.request_id }
-            };
-
-            setNotifications(prev => [newNotif, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            toast.success('Nouvelle offre reçue!', {
-              description: `${offer.driver_name} - ${offer.proposed_price}€`
+          setNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          
+          // Show toast notification
+          const notifType = newNotif.type;
+          if (notifType === 'new_offer') {
+            toast.success(newNotif.title, {
+              description: newNotif.message
             });
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to negotiations
-    const negotiationsChannel = supabase
-      .channel('negotiations')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'negotiations'
-        },
-        async (payload) => {
-          const nego = payload.new as any;
-          
-          if (nego.from_user_id !== user.id) {
-            const newNotif: Notification = {
-              id: `nego-${nego.id}`,
-              type: 'negotiation',
-              title: 'Nouvelle négociation',
-              message: `Contre-offre: ${nego.proposed_price}€`,
-              read: false,
-              created_at: nego.created_at,
-              data: { negotiationId: nego.id, offerId: nego.offer_id }
-            };
-
-            setNotifications(prev => [newNotif, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            toast.info('Nouvelle négociation', {
-              description: nego.message
+          } else if (notifType === 'negotiation') {
+            toast.info(newNotif.title, {
+              description: newNotif.message
             });
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to ratings
-    const ratingsChannel = supabase
-      .channel('ratings')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ratings'
-        },
-        async (payload) => {
-          const rating = payload.new as any;
-          
-          if (rating.driver_id === user.id) {
-            const newNotif: Notification = {
-              id: `rating-${rating.id}`,
-              type: 'rating',
-              title: 'Nouvelle évaluation',
-              message: `Vous avez reçu ${rating.overall_rating}/5 étoiles`,
-              read: false,
-              created_at: rating.created_at,
-              data: { ratingId: rating.id }
-            };
-
-            setNotifications(prev => [newNotif, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            toast.success('Nouvelle évaluation!', {
-              description: `${rating.overall_rating}/5 étoiles`
+          } else if (notifType === 'rating') {
+            toast.success(newNotif.title, {
+              description: newNotif.message
+            });
+          } else {
+            toast(newNotif.title, {
+              description: newNotif.message
             });
           }
         }
@@ -235,22 +97,58 @@ const NotificationCenter = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(offersChannel);
-      supabase.removeChannel(negotiationsChannel);
-      supabase.removeChannel(ratingsChannel);
+      supabase.removeChannel(channel);
     };
   };
 
-  const markAsRead = (notifId: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === notifId ? { ...n, read: true } : n)
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+  const markAsRead = async (notifId: string) => {
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notifId);
+
+      setNotifications(prev =>
+        prev.map(n => n.id === notifId ? { ...n, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Erreur marquage notification:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+  const markAllAsRead = async () => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Erreur marquage notifications:', error);
+    }
+  };
+
+  const deleteNotification = async (notifId: string) => {
+    try {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notifId);
+
+      setNotifications(prev => prev.filter(n => n.id !== notifId));
+      const wasUnread = notifications.find(n => n.id === notifId)?.read === false;
+      if (wasUnread) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Erreur suppression notification:', error);
+    }
   };
 
   const getNotificationIcon = (type: Notification['type']) => {
@@ -313,10 +211,9 @@ const NotificationCenter = () => {
               notifications.map((notif) => (
                 <Card
                   key={notif.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
+                  className={`transition-all hover:shadow-md ${
                     !notif.read ? 'bg-electric-50 border-electric-200' : ''
                   }`}
-                  onClick={() => markAsRead(notif.id)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
@@ -326,21 +223,46 @@ const NotificationCenter = () => {
                           <h4 className="font-semibold text-sm truncate">
                             {notif.title}
                           </h4>
-                          {!notif.read && (
-                            <Badge variant="default" className="bg-electric-500 text-xs">
-                              Nouveau
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {!notif.read && (
+                              <Badge variant="default" className="bg-electric-500 text-xs">
+                                Nouveau
+                              </Badge>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(notif.id);
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">
                           {notif.message}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(notif.created_at), {
-                            addSuffix: true,
-                            locale: fr
-                          })}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(notif.created_at), {
+                              addSuffix: true,
+                              locale: fr
+                            })}
+                          </p>
+                          {!notif.read && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-6"
+                              onClick={() => markAsRead(notif.id)}
+                            >
+                              Marquer comme lu
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
