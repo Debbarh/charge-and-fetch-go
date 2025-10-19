@@ -18,6 +18,7 @@ import { formatDistance } from '@/utils/geoUtils';
 import ProfileManagement from '@/components/ProfileManagement';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import TopDrivers from '@/components/TopDrivers';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -422,7 +423,11 @@ const Index = () => {
 
             {/* Contenu conditionnel */}
             {clientTab === 'services' ? (
-              <ClientRequestForm onRequestPublished={handleRequestPublished} />
+              <>
+                <ClientRequestForm onRequestPublished={handleRequestPublished} />
+                {/* Afficher les meilleurs chauffeurs */}
+                <TopDrivers />
+              </>
             ) : (
               <ClientOffers />
             )}
