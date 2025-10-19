@@ -353,13 +353,73 @@ const ClientOffers = () => {
     setShowRatingDialog(true);
   };
 
-  const submitRating = () => {
-    toast({
-      title: "Évaluation soumise !",
-      description: `Merci d'avoir évalué ${selectedOffer?.driverName}. Votre avis aidera les futurs clients.`,
-    });
-    setShowRatingDialog(false);
-    setSelectedOffer(null);
+  const submitRating = async () => {
+    if (!selectedOffer || !user || !clientRequest) return;
+
+    try {
+      const { error } = await supabase
+        .from('ratings')
+        .insert({
+          driver_id: selectedOffer.driverId,
+          client_id: user.id,
+          request_id: clientRequest.id,
+          offer_id: selectedOffer.id,
+          overall_rating: rating.stars,
+          punctuality_rating: rating.categories.punctuality || null,
+          communication_rating: rating.categories.communication || null,
+          vehicle_condition_rating: rating.categories.vehicleCondition || null,
+          professionalism_rating: rating.categories.professionalism || null,
+          comment: rating.comment || null
+        });
+
+      if (error) {
+        // Si l'évaluation existe déjà, la mettre à jour
+        if (error.code === '23505') {
+          const { error: updateError } = await supabase
+            .from('ratings')
+            .update({
+              overall_rating: rating.stars,
+              punctuality_rating: rating.categories.punctuality || null,
+              communication_rating: rating.categories.communication || null,
+              vehicle_condition_rating: rating.categories.vehicleCondition || null,
+              professionalism_rating: rating.categories.professionalism || null,
+              comment: rating.comment || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('client_id', user.id)
+            .eq('request_id', clientRequest.id);
+
+          if (updateError) throw updateError;
+        } else {
+          throw error;
+        }
+      }
+
+      toast({
+        title: "Évaluation soumise !",
+        description: `Merci d'avoir évalué ${selectedOffer?.driverName}. Votre avis aidera les futurs clients.`,
+      });
+
+      setShowRatingDialog(false);
+      setSelectedOffer(null);
+      setRating({
+        stars: 0,
+        comment: '',
+        categories: {
+          punctuality: 0,
+          communication: 0,
+          vehicleCondition: 0,
+          professionalism: 0
+        }
+      });
+    } catch (error: any) {
+      console.error('Erreur soumission évaluation:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de soumettre l'évaluation.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {

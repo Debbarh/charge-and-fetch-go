@@ -52,9 +52,9 @@ const DriverService = () => {
   const [availableRequests, setAvailableRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user, profile, hasRole } = useAuth();
 
-  // Charger les demandes et offres depuis Supabase
+  // Charger les demandes, offres et stats depuis Supabase
   useEffect(() => {
     if (!user) return;
 
@@ -106,6 +106,24 @@ const DriverService = () => {
             sentAt: offer.created_at
           })));
         }
+
+        // Charger les stats du chauffeur
+        if (hasRole('chauffeur')) {
+          const { data: stats, error: statsError } = await supabase
+            .from('driver_stats')
+            .select('*')
+            .eq('driver_id', user.id)
+            .single();
+
+          if (statsError && statsError.code !== 'PGRST116') {
+            console.error('Erreur stats:', statsError);
+          }
+
+          // Les stats seront utilisées plus tard pour l'affichage
+          if (stats) {
+            console.log('Stats du chauffeur:', stats);
+          }
+        }
       } catch (error: any) {
         console.error('Erreur chargement données:', error);
       } finally {
@@ -135,7 +153,7 @@ const DriverService = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, hasRole]);
 
   const handleAcceptRequest = async (requestIdStr: string) => {
     if (!user || !profile) {
@@ -151,14 +169,21 @@ const DriverService = () => {
       const request = availableRequests.find(r => r.id === requestIdStr);
       if (!request) return;
 
+      // Charger les stats du chauffeur
+      const { data: stats } = await supabase
+        .from('driver_stats')
+        .select('*')
+        .eq('driver_id', user.id)
+        .single();
+
       const { error } = await supabase
         .from('driver_offers')
         .insert({
           request_id: requestIdStr,
           driver_id: user.id,
           driver_name: profile.full_name || 'Chauffeur Pro',
-          driver_rating: 4.9,
-          driver_total_rides: 127,
+          driver_rating: stats?.average_rating || 4.9,
+          driver_total_rides: stats?.completed_rides || 0,
           driver_vehicle: 'Peugeot 208',
           driver_experience: "5 ans d'expérience",
           proposed_price: parseFloat(request.payment.replace('€', '')),
